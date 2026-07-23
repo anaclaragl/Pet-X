@@ -1,18 +1,51 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { View, Platform, StyleSheet } from 'react-native';
+import { AppThemeProvider, useAppTheme } from '@/hooks/ThemeContext';
+import { PostsProvider } from '@/context/PostsContext';
+import { ChatProvider } from '@/context/ChatContext';
+import { NotificationsProvider } from '@/context/NotificationsContext';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+function RootLayoutNav() {
+  const { colorScheme } = useAppTheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+      <View style={styles.appContainer}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="login" />
+          <Stack.Screen name="register" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="chat/[id]" />
+          <Stack.Screen name="post/[id]" />
+          <Stack.Screen name="notifications" />
+        </Stack>
+      </View>
+    </NavigationThemeProvider>
   );
 }
+
+export default function TabLayout() {
+  return (
+    <AppThemeProvider>
+      <PostsProvider>
+        <ChatProvider>
+          <NotificationsProvider>
+            <RootLayoutNav />
+          </NotificationsProvider>
+        </ChatProvider>
+      </PostsProvider>
+    </AppThemeProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  appContainer: {
+    flex: 1,
+  }
+});
