@@ -1,18 +1,36 @@
 import { useState } from 'react';
-import { StyleSheet, TextInput, Pressable, View } from 'react-native';
+import { StyleSheet, TextInput, Pressable, View, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginScreen() {
   const theme = useTheme();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleLogin = () => {
-    // Simulate login and navigate to tabs
-    router.replace('/(tabs)');
+  const handleLogin = async () => {
+    if (!email.trim()) {
+      setErrorMsg('Por favor, informe seu e-mail.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+
+    const res = await signIn({ email, password });
+    setLoading(false);
+
+    if (res.error) {
+      setErrorMsg(res.error);
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   return (
@@ -23,6 +41,12 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.form}>
+        {Boolean(errorMsg) && (
+          <ThemedText style={{ color: '#EF4444', textAlign: 'center', marginBottom: 8 }}>
+            {errorMsg}
+          </ThemedText>
+        )}
+
         <TextInput
           style={[styles.input, { color: theme.text, borderColor: theme.border }]}
           placeholder="E-mail"
@@ -44,11 +68,16 @@ export default function LoginScreen() {
         <Pressable 
           style={({ pressed }) => [
             styles.button, 
-            { backgroundColor: theme.brand, opacity: pressed ? 0.8 : 1 }
+            { backgroundColor: theme.brand, opacity: pressed || loading ? 0.8 : 1 }
           ]} 
           onPress={handleLogin}
+          disabled={loading}
         >
-          <ThemedText style={styles.buttonText}>Entrar</ThemedText>
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <ThemedText style={styles.buttonText}>Entrar</ThemedText>
+          )}
         </Pressable>
 
         <Pressable onPress={() => router.push('/register')} style={styles.linkContainer}>

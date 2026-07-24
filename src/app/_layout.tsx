@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider, Stac
 import * as SplashScreen from 'expo-splash-screen';
 import { View, Platform, StyleSheet } from 'react-native';
 import { AppThemeProvider, useAppTheme } from '@/hooks/ThemeContext';
+import { AuthProvider } from '@/context/AuthContext';
 import { PostsProvider } from '@/context/PostsContext';
 import { ChatProvider } from '@/context/ChatContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
@@ -33,13 +34,15 @@ function RootLayoutNav() {
 export default function TabLayout() {
   return (
     <AppThemeProvider>
-      <PostsProvider>
-        <ChatProvider>
-          <NotificationsProvider>
-            <RootLayoutNav />
-          </NotificationsProvider>
-        </ChatProvider>
-      </PostsProvider>
+      <AuthProvider>
+        <PostsProvider>
+          <ChatProvider>
+            <NotificationsProvider>
+              <RootLayoutNav />
+            </NotificationsProvider>
+          </ChatProvider>
+        </PostsProvider>
+      </AuthProvider>
     </AppThemeProvider>
   );
 }

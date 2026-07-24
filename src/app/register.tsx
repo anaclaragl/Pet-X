@@ -1,22 +1,48 @@
 import { useState } from 'react';
-import { StyleSheet, TextInput, Pressable, View, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, Pressable, View, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/context/AuthContext';
 
 export default function RegisterScreen() {
   const theme = useTheme();
+  const { signUp } = useAuth();
   const [accountType, setAccountType] = useState<'fisica' | 'ong'>('fisica');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleRegister = () => {
-    // Simulate register and navigate
-    router.replace('/(tabs)');
+  const handleRegister = async () => {
+    if (!name.trim() || !email.trim()) {
+      setErrorMsg('Por favor, preencha os campos obrigatórios (Nome e E-mail).');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+
+    const res = await signUp({
+      email,
+      password,
+      name,
+      accountType,
+      city,
+      state,
+    });
+
+    setLoading(false);
+
+    if (res.error) {
+      setErrorMsg(res.error);
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   return (
@@ -28,6 +54,12 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.form}>
+          {Boolean(errorMsg) && (
+            <ThemedText style={{ color: '#EF4444', textAlign: 'center', marginBottom: 8 }}>
+              {errorMsg}
+            </ThemedText>
+          )}
+
           <View style={styles.typeSelector}>
             <Pressable
               style={[
@@ -97,11 +129,16 @@ export default function RegisterScreen() {
           <Pressable 
             style={({ pressed }) => [
               styles.button, 
-              { backgroundColor: theme.brand, opacity: pressed ? 0.8 : 1 }
+              { backgroundColor: theme.brand, opacity: pressed || loading ? 0.8 : 1 }
             ]} 
             onPress={handleRegister}
+            disabled={loading}
           >
-            <ThemedText style={styles.buttonText}>Cadastrar</ThemedText>
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <ThemedText style={styles.buttonText}>Cadastrar</ThemedText>
+            )}
           </Pressable>
 
           <Pressable onPress={() => router.back()} style={styles.linkContainer}>
