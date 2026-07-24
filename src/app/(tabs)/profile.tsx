@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { StyleSheet, View, Image, ScrollView, Pressable, Switch } from 'react-native';
-import { router } from 'expo-router';
+import { EditProfileModal } from '@/components/edit-profile-modal';
+import { ImageViewerModal } from '@/components/image-viewer-modal';
+import { PostActions } from '@/components/post-actions';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAppTheme } from '@/hooks/ThemeContext';
 import { usePosts } from '@/context/PostsContext';
-import { ImageViewerModal } from '@/components/image-viewer-modal';
-import { EditProfileModal } from '@/components/edit-profile-modal';
+import { useAppTheme } from '@/hooks/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
@@ -46,11 +47,11 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.responsiveWrapper}>
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true}>
           <ThemedView style={[styles.header, { borderBottomColor: theme.border }]}>
-            <Image 
-              source={{ uri: userProfile.avatar }} 
-              style={styles.avatar} 
+            <Image
+              source={{ uri: userProfile.avatar }}
+              style={styles.avatar}
               resizeMode="cover"
             />
             <ThemedText type="title" style={{ fontSize: 24, marginTop: 16 }}>{userProfile.name}</ThemedText>
@@ -60,7 +61,7 @@ export default function ProfileScreen() {
                 {userProfile.bio}
               </ThemedText>
             ) : null}
-            
+
             <View style={styles.stats}>
               <View style={styles.statItem}>
                 <ThemedText style={[styles.statNumber, { color: theme.text }]}>{userPosts.length}</ThemedText>
@@ -71,16 +72,19 @@ export default function ProfileScreen() {
                 <ThemedText style={{ color: theme.textSecondary }}>Ajudou</ThemedText>
               </View>
             </View>
-            
-            <Pressable style={[styles.editButton, { borderColor: theme.border }]} onPress={() => setEditModalVisible(true)}>
+
+            <Pressable
+              style={({ pressed }) => [styles.editButton, { borderColor: theme.border }, pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }]}
+              onPress={() => setEditModalVisible(true)}
+            >
               <ThemedText style={{ fontWeight: '600' }}>Editar Perfil</ThemedText>
             </Pressable>
           </ThemedView>
 
           <View style={[styles.themeToggle, { borderBottomColor: theme.border, borderTopColor: theme.border }]}>
             <ThemedText style={{ fontSize: 16, fontWeight: '500' }}>Modo Escuro</ThemedText>
-            <Switch 
-              value={colorScheme === 'dark'} 
+            <Switch
+              value={colorScheme === 'dark'}
               onValueChange={toggleTheme}
               trackColor={{ false: theme.border, true: theme.brand }}
             />
@@ -96,8 +100,8 @@ export default function ProfileScreen() {
             </View>
           ) : (
             userPosts.map((item) => {
-              const postImages: string[] = item.images && item.images.length > 0 
-                ? item.images 
+              const postImages: string[] = item.images && item.images.length > 0
+                ? item.images
                 : (item.image ? [item.image] : []);
 
               return (
@@ -108,7 +112,7 @@ export default function ProfileScreen() {
                       <ThemedText style={styles.userName}>{item.user}</ThemedText>
                       <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
                     </View>
-                    
+
                     <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
                       <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
                         {getTagLabel(item.type)}
@@ -119,11 +123,17 @@ export default function ProfileScreen() {
 
                     {/* Photos Gallery */}
                     {postImages.length === 1 && (
-                      <Pressable onPress={() => openViewer(postImages, 0)}>
-                        <Image 
-                          source={{ uri: postImages[0] }} 
-                          style={[styles.singlePostImage, { borderColor: theme.border }]} 
-                          resizeMode="cover" 
+                      <Pressable
+                        style={({ pressed, hovered }: any) => [
+                          hovered && { opacity: 0.92, transform: [{ scale: 1.005 }] },
+                          pressed && { opacity: 0.8 }
+                        ]}
+                        onPress={() => openViewer(postImages, 0)}
+                      >
+                        <Image
+                          source={{ uri: postImages[0] }}
+                          style={[styles.singlePostImage, { borderColor: theme.border }]}
+                          resizeMode="cover"
                         />
                       </Pressable>
                     )}
@@ -131,42 +141,32 @@ export default function ProfileScreen() {
                     {postImages.length > 1 && (
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.multiImageContainer}>
                         {postImages.map((imgUri, idx) => (
-                          <Pressable key={`${imgUri}-${idx}`} onPress={() => openViewer(postImages, idx)}>
-                            <Image 
-                              source={{ uri: imgUri }} 
-                              style={[styles.multiPostImage, { borderColor: theme.border }]} 
-                              resizeMode="cover" 
+                          <Pressable 
+                            key={`${imgUri}-${idx}`}
+                            style={({ pressed, hovered }: any) => [
+                              hovered && { opacity: 0.92, transform: [{ scale: 1.01 }] },
+                              pressed && { opacity: 0.8 }
+                            ]}
+                            onPress={() => openViewer(postImages, idx)}
+                          >
+                            <Image
+                              source={{ uri: imgUri }}
+                              style={[styles.multiPostImage, { borderColor: theme.border }]}
+                              resizeMode="cover"
                             />
                           </Pressable>
                         ))}
                       </ScrollView>
                     )}
 
-                    <View style={styles.actions}>
-                      <Pressable style={styles.actionItem} onPress={() => router.push(`/post/${item.id}` as any)}>
-                        <MaterialIcons name="chat-bubble-outline" size={20} color={theme.textSecondary} />
-                        {item.commentsCount > 0 && (
-                          <ThemedText style={{ marginLeft: 6, fontSize: 13, color: theme.textSecondary }}>
-                            {item.commentsCount}
-                          </ThemedText>
-                        )}
-                      </Pressable>
-                      <Pressable style={styles.actionItem} onPress={() => toggleLike(item.id)}>
-                        <MaterialIcons 
-                          name={item.isLiked ? "favorite" : "favorite-border"} 
-                          size={20} 
-                          color={item.isLiked ? "#E0245E" : theme.textSecondary} 
-                        />
-                        {item.likesCount > 0 && (
-                          <ThemedText style={{ marginLeft: 6, fontSize: 13, color: item.isLiked ? "#E0245E" : theme.textSecondary }}>
-                            {item.likesCount}
-                          </ThemedText>
-                        )}
-                      </Pressable>
-                      <Pressable style={styles.actionItem}>
-                        <MaterialIcons name="share" size={20} color={theme.textSecondary} />
-                      </Pressable>
-                    </View>
+                    <PostActions
+                      postId={item.id}
+                      likesCount={item.likesCount}
+                      isLiked={item.isLiked}
+                      commentsCount={item.commentsCount}
+                      onLike={() => toggleLike(item.id)}
+                      onComment={() => router.push(`/post/${item.id}` as any)}
+                    />
                   </View>
                 </View>
               );

@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePosts } from '@/context/PostsContext';
 import { useChat } from '@/context/ChatContext';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
+import { PostActions } from '@/components/post-actions';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -100,14 +101,16 @@ export default function SearchScreen() {
                 <Pressable
                   key={cat.id}
                   onPress={() => setSelectedCategory(cat.id)}
-                  style={[
+                  style={({ pressed, hovered }: any) => [
                     styles.chip,
                     { 
                       backgroundColor: isSelected 
                         ? (cat.id === 'todos' ? theme.brand : cat.color) 
                         : theme.backgroundElement,
                       borderColor: theme.border,
-                    }
+                    },
+                    hovered && !isSelected && { backgroundColor: theme.border },
+                    pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] },
                   ]}
                 >
                   <ThemedText style={{ color: isSelected ? '#FFF' : theme.text, fontWeight: '600', fontSize: 13 }}>
@@ -154,7 +157,13 @@ export default function SearchScreen() {
 
                     {/* Photos Gallery */}
                     {postImages.length === 1 && (
-                      <Pressable onPress={() => openViewer(postImages, 0)}>
+                      <Pressable
+                        style={({ pressed, hovered }: any) => [
+                          hovered && { opacity: 0.92, transform: [{ scale: 1.005 }] },
+                          pressed && { opacity: 0.8 }
+                        ]}
+                        onPress={() => openViewer(postImages, 0)}
+                      >
                         <Image 
                           source={{ uri: postImages[0] }} 
                           style={[styles.singlePostImage, { borderColor: theme.border }]} 
@@ -166,7 +175,14 @@ export default function SearchScreen() {
                     {postImages.length > 1 && (
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.multiImageContainer}>
                         {postImages.map((imgUri, idx) => (
-                          <Pressable key={`${imgUri}-${idx}`} onPress={() => openViewer(postImages, idx)}>
+                          <Pressable
+                            key={`${imgUri}-${idx}`}
+                            style={({ pressed, hovered }: any) => [
+                              hovered && { opacity: 0.92, transform: [{ scale: 1.01 }] },
+                              pressed && { opacity: 0.8 }
+                            ]}
+                            onPress={() => openViewer(postImages, idx)}
+                          >
                             <Image 
                               source={{ uri: imgUri }} 
                               style={[styles.multiPostImage, { borderColor: theme.border }]} 
@@ -177,31 +193,14 @@ export default function SearchScreen() {
                       </ScrollView>
                     )}
 
-                    <View style={styles.actions}>
-                      <Pressable style={styles.actionItem} onPress={() => router.push(`/post/${item.id}` as any)}>
-                        <MaterialIcons name="chat-bubble-outline" size={20} color={theme.textSecondary} />
-                        {item.commentsCount > 0 && (
-                          <ThemedText style={{ marginLeft: 6, fontSize: 13, color: theme.textSecondary }}>
-                            {item.commentsCount}
-                          </ThemedText>
-                        )}
-                      </Pressable>
-                      <Pressable style={styles.actionItem} onPress={() => toggleLike(item.id)}>
-                        <MaterialIcons 
-                          name={item.isLiked ? "favorite" : "favorite-border"} 
-                          size={20} 
-                          color={item.isLiked ? "#E0245E" : theme.textSecondary} 
-                        />
-                        {item.likesCount > 0 && (
-                          <ThemedText style={{ marginLeft: 6, fontSize: 13, color: item.isLiked ? "#E0245E" : theme.textSecondary }}>
-                            {item.likesCount}
-                          </ThemedText>
-                        )}
-                      </Pressable>
-                      <Pressable style={styles.actionItem}>
-                        <MaterialIcons name="share" size={20} color={theme.textSecondary} />
-                      </Pressable>
-                    </View>
+                    <PostActions
+                      postId={item.id}
+                      likesCount={item.likesCount}
+                      isLiked={item.isLiked}
+                      commentsCount={item.commentsCount}
+                      onLike={() => toggleLike(item.id)}
+                      onComment={() => router.push(`/post/${item.id}` as any)}
+                    />
                   </View>
                 </View>
               );

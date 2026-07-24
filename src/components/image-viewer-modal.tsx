@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, StyleSheet, View, Image, Pressable, Dimensions } from 'react-native';
+import { Modal, StyleSheet, View, Image, Pressable, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ThemedText } from './themed-text';
 
@@ -18,6 +18,23 @@ export function ImageViewerModal({ visible, images, initialIndex = 0, onClose }:
       setCurrentIndex(initialIndex >= 0 && initialIndex < images.length ? initialIndex : 0);
     }
   }, [visible, initialIndex, images]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev();
+      } else if (e.key === 'ArrowRight') {
+        handleNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [visible, currentIndex, images]);
 
   if (!visible || !images || images.length === 0) return null;
 
@@ -41,38 +58,46 @@ export function ImageViewerModal({ visible, images, initialIndex = 0, onClose }:
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <Pressable style={styles.overlay} onPress={onClose}>
         {/* Header Bar */}
         <View style={styles.header}>
           <ThemedText style={styles.counterText}>
             {images.length > 1 ? `${currentIndex + 1} / ${images.length}` : ''}
           </ThemedText>
-          <Pressable style={styles.closeButton} onPress={onClose}>
-            <MaterialIcons name="close" size={28} color="#FFF" />
+          <Pressable style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.7 }]} onPress={onClose}>
+            <MaterialIcons name="close" size={26} color="#FFF" />
           </Pressable>
         </View>
 
         {/* Image Content Container */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: currentImage }}
-            style={styles.fullImage}
-            resizeMode="contain"
-          />
+        <View style={[styles.imageContainer, { pointerEvents: 'box-none' as const }]}>
+          <Pressable style={styles.imageWrapper} onPress={(e) => e.stopPropagation()}>
+            <Image
+              source={{ uri: currentImage }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          </Pressable>
 
           {/* Navigation Arrows */}
           {images.length > 1 && (
             <>
-              <Pressable style={[styles.arrowButton, styles.leftArrow]} onPress={handlePrev}>
+              <Pressable
+                style={({ pressed }) => [styles.arrowButton, styles.leftArrow, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+                onPress={(e) => { e.stopPropagation(); handlePrev(); }}
+              >
                 <MaterialIcons name="chevron-left" size={36} color="#FFF" />
               </Pressable>
-              <Pressable style={[styles.arrowButton, styles.rightArrow]} onPress={handleNext}>
+              <Pressable
+                style={({ pressed }) => [styles.arrowButton, styles.rightArrow, pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }]}
+                onPress={(e) => { e.stopPropagation(); handleNext(); }}
+              >
                 <MaterialIcons name="chevron-right" size={36} color="#FFF" />
               </Pressable>
             </>
           )}
         </View>
-      </View>
+      </Pressable>
     </Modal>
   );
 }
@@ -80,15 +105,15 @@ export function ImageViewerModal({ visible, images, initialIndex = 0, onClose }:
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.92)',
+    backgroundColor: 'rgba(0, 0, 0, 0.94)',
     justifyContent: 'space-between',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 44,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'web' ? 24 : 48,
     paddingBottom: 16,
     zIndex: 10,
   },
@@ -98,37 +123,52 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   closeButton: {
-    padding: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 20,
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 24,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
   },
   imageContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    paddingHorizontal: 60,
+    paddingBottom: 24,
+  },
+  imageWrapper: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   fullImage: {
     width: '100%',
     height: '100%',
-    maxHeight: Dimensions.get('window').height * 0.85,
+    maxWidth: 1200,
+    maxHeight: '90%',
   },
   arrowButton: {
     position: 'absolute',
     top: '50%',
-    marginTop: -24,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    marginTop: -28,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 20,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
   },
   leftArrow: {
-    left: 16,
+    left: 20,
   },
   rightArrow: {
-    right: 16,
+    right: 20,
   },
 });
