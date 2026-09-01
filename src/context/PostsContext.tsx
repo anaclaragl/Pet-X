@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { apiFetch, uploadImageToPostgres } from '@/lib/api';
 
 export type PostType = 'perdido' | 'encontrado' | 'ong' | 'outro';
 
@@ -25,6 +25,7 @@ export interface UserProfile {
 
 export interface Post {
   id: string;
+  userId: string;
   user: string;
   avatar: string;
   type: PostType;
@@ -37,6 +38,7 @@ export interface Post {
   commentsCount: number;
   comments: Comment[];
   isVerified?: boolean;
+  isResolved?: boolean;
 }
 
 interface PostsContextType {
@@ -47,6 +49,9 @@ interface PostsContextType {
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string) => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
+  markAsResolved: (postId: string) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
+  editPost: (postId: string, newContent: string) => Promise<void>;
   refreshPosts: () => Promise<void>;
 }
 
@@ -60,6 +65,7 @@ const INITIAL_PROFILE: UserProfile = {
 const INITIAL_POSTS: Post[] = [
   {
     id: '1',
+    userId: 'demo-user-1',
     user: 'Ana Clara',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
     type: 'perdido',
@@ -91,6 +97,7 @@ const INITIAL_POSTS: Post[] = [
   },
   {
     id: '2',
+    userId: 'demo-user-2',
     user: 'ONG Patinhas',
     avatar: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80',
     type: 'ong',
@@ -113,6 +120,7 @@ const INITIAL_POSTS: Post[] = [
   },
   {
     id: '3',
+    userId: 'demo-user-3',
     user: 'João Silva',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
     type: 'encontrado',
@@ -136,6 +144,9 @@ const PostsContext = createContext<PostsContextType>({
   toggleLike: async () => {},
   addComment: async () => {},
   updateUserProfile: async () => {},
+  markAsResolved: async () => {},
+  deletePost: async () => {},
+  editPost: async () => {},
   refreshPosts: async () => {},
 });
 
@@ -156,70 +167,35 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       }
     : INITIAL_PROFILE;
 
-  const fetchPostsFromSupabase = async () => {
-    if (!isSupabaseConfigured) return;
-
+  const fetchAllPosts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          id,
-          type,
-          content,
-          created_at,
-          user_id,
-          profiles (name, avatar_url, is_verified),
-          post_images (image_url),
-          likes (id, user_id),
-          comments (id, content, created_at, profiles (name, avatar_url))
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Erro ao buscar posts do Supabase:', error.message);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        const formatted: Post[] = data.map((item: any) => {
-          const author = item.profiles || {};
-          const imagesList = (item.post_images || []).map((img: any) => img.image_url);
-          const likesCount = (item.likes || []).length;
-          const isLiked = user ? (item.likes || []).some((l: any) => l.user_id === user.id) : false;
-
-          const commentsList: Comment[] = (item.comments || []).map((c: any) => ({
-            id: c.id,
-            user: c.profiles?.name || 'Usuário',
-            avatar: c.profiles?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-            content: c.content,
-            time: 'Recente',
-          }));
-
-          return {
-            id: item.id,
-            user: author.name || 'Usuário',
-            avatar: author.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-            type: item.type as PostType,
-            content: item.content,
-            images: imagesList,
-            image: imagesList[0] || null,
-            time: 'Recente',
-            likesCount,
-            isLiked,
-            commentsCount: commentsList.length,
-            comments: commentsList,
-            isVerified: author.is_verified || false,
-          };
-        });
+      const serverPosts = await apiFetch<any[]>('/api/posts');
+      if (serverPosts && Array.isArray(serverPosts) && serverPosts.length > 0) {
+        const formatted: Post[] = serverPosts.map((item) => ({
+          id: item.id,
+          userId: item.userId,
+          user: item.user || 'Usuário',
+          avatar: item.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+          type: item.type as PostType,
+          content: item.content,
+          images: Array.isArray(item.images) ? item.images : [],
+          image: Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : null,
+          time: 'Recente',
+          likesCount: item.likesCount || 0,
+          isLiked: item.isLiked || false,
+          commentsCount: item.commentsCount || 0,
+          comments: Array.isArray(item.comments) ? item.comments : [],
+          isResolved: item.isResolved || false,
+        }));
         setPosts(formatted);
       }
-    } catch (e) {
-      console.warn('Erro na consulta Supabase:', e);
+    } catch (err) {
+      // Backend server offline - keep initial posts
     }
   };
 
   useEffect(() => {
-    fetchPostsFromSupabase();
+    fetchAllPosts();
   }, [user?.id]);
 
   const addPost = async (content: string, type: PostType, imagesInput?: string[] | string | null) => {
@@ -232,6 +208,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
 
     const newPostLocal: Post = {
       id: Date.now().toString(),
+      userId: user?.id || 'demo-user-1',
       user: userProfile.name,
       avatar: userProfile.avatar,
       type,
@@ -248,37 +225,21 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
 
     setPosts((prevPosts) => [newPostLocal, ...prevPosts]);
 
-    if (isSupabaseConfigured && user) {
-      try {
-        const { data: postData, error: postError } = await supabase
-          .from('posts')
-          .insert({
-            user_id: user.id,
-            type,
-            content,
-          })
-          .select()
-          .single();
-
-        if (postError) {
-          console.warn('Erro ao salvar post no Supabase:', postError.message);
-          return;
-        }
-
-        if (postData && imagesList.length > 0) {
-          const { uploadImageToSupabase } = await import('@/lib/supabase');
-          const uploadedUrls = await Promise.all(
-            imagesList.map((imgUri) => uploadImageToSupabase(imgUri, 'posts'))
-          );
-          const imageInserts = uploadedUrls.map((url) => ({
-            post_id: postData.id,
-            image_url: url,
-          }));
-          await supabase.from('post_images').insert(imageInserts);
-        }
-      } catch (err) {
-        console.warn('Exceção ao inserir post no Supabase:', err);
-      }
+    try {
+      const uploadedImages = await Promise.all(
+        imagesList.map((img) => uploadImageToPostgres(img))
+      );
+      await apiFetch('/api/posts', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          content,
+          images: uploadedImages,
+        }),
+      });
+      fetchAllPosts();
+    } catch (err) {
+      // Keep local state if server offline
     }
   };
 
@@ -295,16 +256,10 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       })
     );
 
-    if (isSupabaseConfigured && user) {
-      try {
-        if (newLikedState) {
-          await supabase.from('likes').insert({ user_id: user.id, post_id: postId });
-        } else {
-          await supabase.from('likes').delete().eq('user_id', user.id).eq('post_id', postId);
-        }
-      } catch (err) {
-        console.warn('Erro ao atualizar like no Supabase:', err);
-      }
+    try {
+      await apiFetch(`/api/posts/${postId}/like`, { method: 'POST' });
+    } catch (err) {
+      // Local state fallback
     }
   };
 
@@ -332,16 +287,13 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       })
     );
 
-    if (isSupabaseConfigured && user) {
-      try {
-        await supabase.from('comments').insert({
-          post_id: postId,
-          user_id: user.id,
-          content: content.trim(),
-        });
-      } catch (err) {
-        console.warn('Erro ao adicionar comentário no Supabase:', err);
-      }
+    try {
+      await apiFetch(`/api/posts/${postId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content: content.trim() }),
+      });
+    } catch (err) {
+      // Local state fallback
     }
   };
 
@@ -356,6 +308,52 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const markAsResolved = async (postId: string) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((post) => {
+        if (post.id === postId) {
+          return { ...post, isResolved: !post.isResolved };
+        }
+        return post;
+      })
+    );
+    try {
+      await apiFetch(`/api/posts/${postId}/resolve`, { method: 'PUT' });
+      fetchAllPosts();
+    } catch (err) {
+      // Falha silenciosa
+    }
+  };
+
+  const deletePost = async (postId: string) => {
+    setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
+    try {
+      await apiFetch(`/api/posts/${postId}`, { method: 'DELETE' });
+      fetchAllPosts();
+    } catch (err) {
+      // Falha silenciosa
+    }
+  };
+
+  const editPost = async (postId: string, newContent: string) => {
+    if (!newContent.trim()) return;
+
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === postId ? { ...post, content: newContent.trim() } : post
+      )
+    );
+    try {
+      await apiFetch(`/api/posts/${postId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content: newContent.trim() }),
+      });
+      fetchAllPosts();
+    } catch (err) {
+      // Falha silenciosa
+    }
+  };
+
   const userPosts = posts.filter((post) => post.user === userProfile.name);
 
   return (
@@ -368,7 +366,10 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         toggleLike,
         addComment,
         updateUserProfile,
-        refreshPosts: fetchPostsFromSupabase,
+        markAsResolved,
+        deletePost,
+        editPost,
+        refreshPosts: fetchAllPosts,
       }}
     >
       {children}

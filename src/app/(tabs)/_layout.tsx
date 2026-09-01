@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
+import { useNotifications } from '@/context/NotificationsContext';
 import { usePosts } from '@/context/PostsContext';
 import { useTheme } from '@/hooks/use-theme';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ interface TabBarProps {
 function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
   const theme = useTheme();
   const { userProfile } = usePosts();
+  const { unreadCount } = useNotifications();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -21,7 +23,7 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
   const currentRouteName = routes[state.index]?.name;
 
   if (isDesktop) {
-    const desktopRoutes = routes.filter((r: any) => r.name !== 'post');
+    const desktopRoutes = routes.filter((r: any) => r.name !== 'post' && r.name !== 'profile');
 
     return (
       <View style={[styles.sidebarContainer, { backgroundColor: theme.background, borderRightColor: theme.border }]}>
@@ -43,7 +45,7 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
           )}
         </Pressable>
 
-        {/* Navigation Items (Sem 'post', que já tem o botão de destaque abaixo) */}
+        {/* Navigation Items */}
         <View style={styles.navGroup}>
           {desktopRoutes.map((route: any) => {
             const isFocused = currentRouteName === route.name;
@@ -51,6 +53,8 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
 
             let iconName: keyof typeof MaterialIcons.glyphMap = 'home';
             let label = options.title || route.name;
+            let showBadge = false;
+            let badgeValue = 0;
 
             if (route.name === 'index') {
               iconName = 'home';
@@ -58,12 +62,14 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
             } else if (route.name === 'explore') {
               iconName = 'search';
               label = 'Pesquisar';
+            } else if (route.name === 'notifications') {
+              iconName = isFocused ? 'notifications' : 'notifications-none';
+              label = 'Notificações';
+              showBadge = unreadCount > 0;
+              badgeValue = unreadCount;
             } else if (route.name === 'messages') {
               iconName = 'mail-outline';
               label = 'Mensagens';
-            } else if (route.name === 'profile') {
-              iconName = 'person-outline';
-              label = 'Perfil';
             }
 
             const onPress = () => {
@@ -99,6 +105,13 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
                           size={26}
                           color={activeColor}
                         />
+                        {showBadge && (
+                          <View style={[styles.sidebarBadge, { backgroundColor: theme.brand }]}>
+                            <ThemedText style={styles.sidebarBadgeText}>
+                              {badgeValue > 99 ? '99+' : badgeValue}
+                            </ThemedText>
+                          </View>
+                        )}
                       </View>
                       <ThemedText
                         style={[
@@ -138,42 +151,46 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
         </Pressable>
 
         {/* User Profile Summary */}
-        <Pressable
-          style={({ pressed, hovered }: any) => [
-            styles.sidebarUserProfile,
-            { borderTopColor: theme.border },
-            hovered && { backgroundColor: theme.backgroundElement, borderRadius: 16 },
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={() => router.push('/(tabs)/profile')}
-        >
-          {({ hovered }: any) => (
-            <>
-              <Image 
-                source={{ uri: userProfile.avatar }} 
-                style={[styles.sidebarAvatar, hovered && styles.avatarPop]} 
-                resizeMode="cover" 
-              />
-              <View style={styles.sidebarUserInfo}>
-                <ThemedText style={styles.sidebarUserName} numberOfLines={1}>
-                  {userProfile.name}
-                </ThemedText>
-                <ThemedText style={[styles.sidebarUserHandle, { color: theme.textSecondary }]} numberOfLines={1}>
-                  {userProfile.username}
-                </ThemedText>
-              </View>
-            </>
-          )}
-        </Pressable>
+        <View style={[styles.sidebarFooter, { borderTopColor: theme.border }]}>
+          <Pressable
+            style={({ pressed, hovered }: any) => [
+              styles.sidebarUserProfile,
+              (hovered || currentRouteName === 'profile') && { backgroundColor: theme.backgroundElement },
+              hovered && ! (currentRouteName === 'profile') && { backgroundColor: 'rgba(255, 107, 107, 0.08)' },
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => router.push('/(tabs)/profile')}
+          >
+            {({ hovered }: any) => (
+              <>
+                <Image
+                  source={{ uri: userProfile.avatar }}
+                  style={[styles.sidebarAvatar, (hovered || currentRouteName === 'profile') && styles.avatarPop]}
+                  resizeMode="cover"
+                />
+                <View style={styles.sidebarUserInfo}>
+                  <ThemedText style={styles.sidebarUserName} numberOfLines={1}>
+                    {userProfile.name}
+                  </ThemedText>
+                  <ThemedText style={[styles.sidebarUserHandle, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {userProfile.username}
+                  </ThemedText>
+                </View>
+              </>
+            )}
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   // Mobile Bottom Bar Layout
+  const mobileRoutes = routes.filter((r: any) => r.name !== 'notifications');
+
   return (
     <View style={[styles.bottomBarContainer, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
-      {routes.map((route: any, index: number) => {
-        const isFocused = state.index === index;
+      {mobileRoutes.map((route: any, index: number) => {
+        const isFocused = currentRouteName === route.name;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -238,7 +255,8 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Início' }} />
-      <Tabs.Screen name="explore" options={{ title: 'Pesquisa' }} />
+      <Tabs.Screen name="explore" options={{ title: 'Pesquisar' }} />
+      <Tabs.Screen name="notifications" options={{ title: 'Notificações' }} />
       <Tabs.Screen name="post" options={{ title: 'Postar' }} />
       <Tabs.Screen name="messages" options={{ title: 'Mensagens' }} />
       <Tabs.Screen name="profile" options={{ title: 'Perfil' }} />
@@ -257,6 +275,23 @@ const styles = StyleSheet.create({
   navIconWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  sidebarBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  sidebarBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   iconPop: {
     transform: [{ scale: 1.18 }],
@@ -361,11 +396,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
   },
+  sidebarFooter: {
+    borderTopWidth: 1,
+    paddingTop: 10,
+  },
   sidebarUserProfile: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 14,
-    borderTopWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     ...Platform.select({
       web: { cursor: 'pointer' },
     }),

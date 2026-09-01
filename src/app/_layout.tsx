@@ -9,22 +9,36 @@ import { NotificationsProvider } from '@/context/NotificationsContext';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
+import { useAuth } from '@/context/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { colorScheme } = useAppTheme();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
   return (
     <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
       <View style={styles.appContainer}>
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="login" />
-          <Stack.Screen name="register" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="chat/[id]" />
-          <Stack.Screen name="post/[id]" />
-          <Stack.Screen name="notifications" />
+          {/* Rotas Protegidas - Acessíveis apenas quando autenticado com token válido */}
+          <Stack.Protected guard={isAuthenticated}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="chat/[id]" />
+            <Stack.Screen name="post/[id]" />
+            <Stack.Screen name="notifications" />
+          </Stack.Protected>
+
+          {/* Rotas Públicas - Redirecionam se o token for inválido ou não existir */}
+          <Stack.Protected guard={!isAuthenticated}>
+            <Stack.Screen name="login" />
+            <Stack.Screen name="register" />
+          </Stack.Protected>
         </Stack>
       </View>
     </NavigationThemeProvider>

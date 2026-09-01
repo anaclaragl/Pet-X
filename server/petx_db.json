@@ -1,0 +1,250 @@
+{
+  "users": [
+    {
+      "id": "1786733456805qcyao8",
+      "email": "ana.clara.test1@example.com",
+      "password_hash": "$2b$10$sBLLy33ciVKX13uu5p3xL.wsVErO0bxWmp8ROIVU/iB8KcRY5gEKi",
+      "created_at": "2026-08-14T18:50:56.806Z"
+    },
+    {
+      "id": "17867347699750nivpi",
+      "email": "bruno@example.com",
+      "password_hash": "$2b$10$MuCjJzxqFF.JvUnmEp2gFu4xY9ZXjyGP2sYehsoBM3MbSTGvwQz7C",
+      "created_at": "2026-08-14T19:12:49.975Z"
+    },
+    {
+      "id": "1786735777509eu3q5",
+      "email": "bruno.silva@example.com",
+      "password_hash": "$2b$10$wjWqmgX9CtJeBWYI6cuQeuz66GYx4MIpbU8N/AyC61A2/QbdD3Mva",
+      "created_at": "2026-08-14T19:29:37.511Z"
+    },
+    {
+      "id": "1786966215625kk0q4i",
+      "email": "usera_1786966215420@test.com",
+      "password_hash": "$2b$10$Y91FlAKfTgX0GjfLj19yku4qvK8vRpMV4Ho7o7ASvLySLA01Hh69O",
+      "created_at": "2026-08-17T11:30:15.625Z"
+    },
+    {
+      "id": "1786966215801hh102k",
+      "email": "userb_1786966215666@test.com",
+      "password_hash": "$2b$10$4pKqdcktHUl0mCF0YmF38.xwOfgs5QCPHBMsltQIqrlHMTQP4uASa",
+      "created_at": "2026-08-17T11:30:15.802Z"
+    },
+    {
+      "id": "1788284057034pmskr",
+      "email": "ag.linhares2@gmail.com",
+      "password_hash": "$2b$10$Md22alo.YTG1Rikap8xNgerb552SZfBUIlSZhtmp3eG8JbzLMpcXS",
+      "created_at": "2026-09-01T17:34:17.037Z"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "1786733456817z1i0zm",
+      "user_id": "1786733456805qcyao8",
+      "name": "Ana Clara",
+      "username": "@anaclara",
+      "bio": "",
+      "avatar_url": "",
+      "city": "Belo Horizonte",
+      "state": "MG",
+      "account_type": "fisica",
+      "is_verified": false,
+      "created_at": "2026-08-14T18:50:56.818Z"
+    },
+    {
+      "id": "1786734769994g1m9sd",
+      "user_id": "17867347699750nivpi",
+      "name": "Bruno Silva",
+      "username": "@brunosilva",
+      "bio": "",
+      "avatar_url": "",
+      "city": "Sao Paulo",
+      "state": "SP",
+      "account_type": "fisica",
+      "is_verified": false,
+      "created_at": "2026-08-14T19:12:49.995Z"
+    },
+    {
+      "id": "17867357775359ji00d",
+      "user_id": "1786735777509eu3q5",
+      "name": "Bruno Silva",
+      "username": "@brunosilva",
+      "bio": "",
+      "avatar_url": "",
+      "city": "Belo Horizonte",
+      "state": "MG",
+      "account_type": "fisica",
+      "is_verified": false,
+      "created_at": "2026-08-14T19:29:37.536Z"
+    },
+    {
+      "id": "1786966215639mv1lcs",
+      "user_id": "1786966215625kk0q4i",
+      "name": "User A",
+      "username": "@usera",
+      "bio": "",
+      "avatar_url": "",
+      "city": "Curitiba",
+      "state": "PR",
+      "account_type": "tutor",
+      "is_verified": false,
+      "created_at": "2026-08-17T11:30:15.639Z"
+    },
+    {
+      "id": "178696621581078khr",
+      "user_id": "1786966215801hh102k",
+      "name": "User B",
+      "username": "@userb",
+      "bio": "",
+      "avatar_url": "",
+      "city": "Colombo",
+      "state": "PR",
+      "account_type": "ong",
+      "is_verified": true,
+      "created_at": "2026-08-17T11:30:15.810Z"
+    },
+    {
+      "id": "1788284057058hc0mq",
+      "user_id": "1788284057034pmskr",
+      "name": "Ana ONG",
+      "username": "@anaong",
+      "bio": "",
+      "avatar_url": "",
+      "city": "Varginha",
+      "state": "MG",
+      "account_type": "ong",
+      "is_verified": true,
+      "created_at": "2026-09-01T17:34:17.059Z"
+    }
+  ],
+  "posts": [
+    {
+      "id": "1786733585083shr8l8",
+      "user_id": "1786733456805qcyao8",
+      "type": "perdido",
+      "content": "Perdi meu cachorrinho Toto no centro hoje",
+      "is_resolved": false,
+      "likes_count": 1,
+      "created_at": "2026-08-14T18:53:05.085Z"
+    },
+    {
+      "id": "1786966215824wlin9",
+      "user_id": "1786966215625kk0q4i",
+      "type": "perdido",
+      "content": "Procura-se Totó!",
+      "is_resolved": false,
+      "likes_count": 1,
+      "created_at": "2026-08-17T11:30:15.825Z"
+    }
+  ],
+  "post_images": [
+    {
+      "id": "1786966215833zt0l1m",
+      "post_id": "1786966215824wlin9",
+      "image_url": "http://example.com/toto.jpg",
+      "created_at": "2026-08-17T11:30:15.834Z"
+    }
+  ],
+  "likes": [
+    {
+      "id": "1786733628216rmxfqa",
+      "user_id": "1786733456805qcyao8",
+      "post_id": "1786733585083shr8l8",
+      "created_at": "2026-08-14T18:53:48.217Z"
+    },
+    {
+      "id": "1786966215849hwg5",
+      "user_id": "1786966215801hh102k",
+      "post_id": "1786966215824wlin9",
+      "created_at": "2026-08-17T11:30:15.849Z"
+    }
+  ],
+  "comments": [
+    {
+      "id": "1786733864467iavf56",
+      "user_id": "1786733456805qcyao8",
+      "post_id": "1786733585083shr8l8",
+      "content": "Compartilhei!",
+      "created_at": "2026-08-14T18:57:44.470Z"
+    },
+    {
+      "id": "1786736021972v13b3n",
+      "user_id": "1786735777509eu3q5",
+      "post_id": "1786733585083shr8l8",
+      "content": "Ola Ana, vi seu post! Estou enviando uma mensagem.",
+      "created_at": "2026-08-14T19:33:41.974Z"
+    },
+    {
+      "id": "1786966215882cjyck",
+      "user_id": "1786966215801hh102k",
+      "post_id": "1786966215824wlin9",
+      "content": "Vi um cachorro parecido!",
+      "created_at": "2026-08-17T11:30:15.882Z"
+    }
+  ],
+  "conversations": [
+    {
+      "id": "1786966215911h8c3d",
+      "user1_id": "1786966215801hh102k",
+      "user2_id": "1786966215625kk0q4i",
+      "last_message": "Olá, tudo bem?",
+      "last_time": "08:30",
+      "created_at": "2026-08-17T11:30:15.938Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "1786966215926gflhiaq",
+      "conversation_id": "1786966215911h8c3d",
+      "sender_id": "1786966215801hh102k",
+      "text": "Olá, tudo bem?",
+      "created_at": "2026-08-17T11:30:15.927Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "1786736021990lmv2wf",
+      "user_id": "1786733456805qcyao8",
+      "type": "comment",
+      "sender_name": "Alguém",
+      "sender_avatar": "",
+      "text": "comentou no seu post: \"Ola Ana, vi seu post! Estou en...\"",
+      "target_id": "1786733585083shr8l8",
+      "is_read": false,
+      "created_at": "2026-08-14T19:33:41.993Z"
+    },
+    {
+      "id": "1786966215868xpl2v",
+      "user_id": "1786966215625kk0q4i",
+      "type": "like",
+      "sender_name": "Alguém",
+      "sender_avatar": "",
+      "text": "curtiu a sua publicação.",
+      "target_id": "1786966215824wlin9",
+      "is_read": false,
+      "created_at": "2026-08-17T11:30:15.869Z"
+    },
+    {
+      "id": "1786966215891bxrcit",
+      "user_id": "1786966215625kk0q4i",
+      "type": "comment",
+      "sender_name": "Alguém",
+      "sender_avatar": "",
+      "text": "comentou no seu post: \"Vi um cachorro parecido!\"",
+      "target_id": "1786966215824wlin9",
+      "is_read": false,
+      "created_at": "2026-08-17T11:30:15.891Z"
+    },
+    {
+      "id": "1786966215948e4wyb",
+      "user_id": "1786966215625kk0q4i",
+      "type": "message",
+      "sender_name": "Alguém",
+      "sender_avatar": "",
+      "text": "enviou uma nova mensagem direta.",
+      "target_id": "1786966215911h8c3d",
+      "is_read": false,
+      "created_at": "2026-08-17T11:30:15.948Z"
+    }
+  ]
+}

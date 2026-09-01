@@ -29,8 +29,8 @@ export default function SearchScreen() {
     setModalVisible(true);
   };
 
-  const handleOpenChat = (userName: string, userAvatar: string) => {
-    const chatId = startOrOpenChat(userName, userAvatar);
+  const handleOpenChat = async (recipientId: string, userName: string, userAvatar: string) => {
+    const chatId = await startOrOpenChat(recipientId, userName, userAvatar);
     router.push(`/chat/${chatId}` as any);
   };
 

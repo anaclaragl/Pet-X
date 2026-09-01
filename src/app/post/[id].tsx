@@ -1,25 +1,29 @@
-import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Image, TextInput, Pressable, FlatList, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useTheme } from '@/hooks/use-theme';
-import { usePosts } from '@/context/PostsContext';
-import { useChat } from '@/context/ChatContext';
+import { EditPostModal } from '@/components/edit-post-modal';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
+import { PostOptionsMenuModal } from '@/components/post-options-modal';
+import { ThemedText } from '@/components/themed-text';
+import { useChat } from '@/context/ChatContext';
+import { usePosts } from '@/context/PostsContext';
+import { useTheme } from '@/hooks/use-theme';
 import { MaterialIcons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useRef, useState } from 'react';
+import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PostDetailsScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { posts, toggleLike, addComment } = usePosts();
+  const { posts, toggleLike, addComment, markAsResolved, deletePost, editPost } = usePosts();
   const { startOrOpenChat } = useChat();
 
   const [commentText, setCommentText] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImages, setModalImages] = useState<string[]>([]);
   const [modalInitialIndex, setModalInitialIndex] = useState(0);
+
+  const [optionsVisible, setOptionsVisible] = useState(false);
+  const [editVisible, setEditVisible] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -50,10 +54,10 @@ export default function PostDetailsScreen() {
     setModalVisible(true);
   };
 
-  const handleOpenChat = () => {
-    const chatId = startOrOpenChat(post.user, post.avatar);
-    router.push(`/chat/${chatId}` as any);
-  };
+  // const handleOpenChat = async () => {
+  //   const chatId = await startOrOpenChat(post.userId, post.user, post.avatar);
+  //   router.push(`/chat/${chatId}` as any);
+  // };
 
   const handleSendComment = () => {
     if (!commentText.trim()) return;
@@ -88,7 +92,7 @@ export default function PostDetailsScreen() {
         >
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Pressable onPress={() => window.history.back()} style={styles.backButton}>
               <MaterialIcons name="arrow-back" size={24} color={theme.text} />
             </Pressable>
             <ThemedText type="title" style={{ fontSize: 20 }}>Post</ThemedText>
@@ -107,11 +111,33 @@ export default function PostDetailsScreen() {
                     <ThemedText style={styles.userName}>{post.user}</ThemedText>
                     <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>· {post.time}</ThemedText>
                   </View>
+
+                  <Pressable
+                    style={({ pressed, hovered }: any) => [
+                      styles.moreBtn,
+                      hovered && { backgroundColor: theme.backgroundElement },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                    onPress={() => setOptionsVisible(true)}
+                  >
+                    <MaterialIcons name="more-horiz" size={20} color={theme.textSecondary} />
+                  </Pressable>
+                </View>
+
+                {/* Badges Row */}
+                <View style={styles.badgesRow}>
                   <View style={[styles.tagBadge, { backgroundColor: getTagColor(post.type) }]}>
                     <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
                       {getTagLabel(post.type)}
                     </ThemedText>
                   </View>
+
+                  {post.isResolved && (
+                    <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
+                      <MaterialIcons name="verified" size={14} color="#FFF" />
+                      <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
+                    </View>
+                  )}
                 </View>
 
                 {/* Content */}
@@ -144,7 +170,7 @@ export default function PostDetailsScreen() {
 
                 {/* Action Toolbar */}
                 <View style={[styles.actionsBar, { borderTopColor: theme.border, borderBottomColor: theme.border }]}>
-                  <Pressable style={styles.actionItem} onPress={handleOpenChat}>
+                  <Pressable style={styles.actionItem} >
                     <MaterialIcons name="chat-bubble-outline" size={20} color={theme.textSecondary} />
                   </Pressable>
                   <Pressable style={styles.actionItem} onPress={() => toggleLike(post.id)}>
@@ -215,6 +241,25 @@ export default function PostDetailsScreen() {
             images={modalImages}
             initialIndex={modalInitialIndex}
             onClose={() => setModalVisible(false)}
+          />
+
+          <PostOptionsMenuModal
+            visible={optionsVisible}
+            post={post}
+            onClose={() => setOptionsVisible(false)}
+            onToggleResolved={(postId) => markAsResolved(postId)}
+            onEdit={() => setEditVisible(true)}
+            onDelete={(postId) => {
+              deletePost(postId);
+              router.back();
+            }}
+          />
+
+          <EditPostModal
+            visible={editVisible}
+            post={post}
+            onClose={() => setEditVisible(false)}
+            onSave={(postId, newContent) => editPost(postId, newContent)}
           />
         </KeyboardAvoidingView>
       </View>
@@ -360,5 +405,30 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  moreBtn: {
+    padding: 4,
+    borderRadius: 16,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 8,
+    flexWrap: 'wrap',
+  },
+  resolvedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  resolvedBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
 });

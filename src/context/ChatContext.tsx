@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 export interface ChatMessage {
   id: string;
@@ -20,8 +22,9 @@ export interface Conversation {
 
 interface ChatContextType {
   conversations: Conversation[];
-  sendMessage: (conversationId: string, text: string) => void;
-  startOrOpenChat: (userName: string, userAvatar: string) => string;
+  sendMessage: (conversationId: string, text: string) => Promise<void>;
+  startOrOpenChat: (recipientId: string, userName: string, userAvatar: string) => Promise<string>;
+  refreshConversations: () => Promise<void>;
 }
 
 const INITIAL_CONVERSATIONS: Conversation[] = [
@@ -77,65 +80,130 @@ const INITIAL_CONVERSATIONS: Conversation[] = [
 
 const ChatContext = createContext<ChatContextType>({
   conversations: [],
-  sendMessage: () => {},
-  startOrOpenChat: () => '',
+  sendMessage: async () => {},
+  startOrOpenChat: async () => '',
+  refreshConversations: async () => {},
 });
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
-  const sendMessage = (conversationId: string, text: string) => {
+  const fetchConversations = async () => {
+    if (!user) {
+      setConversations([]);
+      return;
+    }
+    try {
+      const convs = await apiFetch<any[]>('/api/conversations');
+      const conversationsWithMessages = await Promise.all(
+        convs.map(async (conv) => {
+          try {
+            const messages = await apiFetch<ChatMessage[]>(`/api/conversations/${conv.id}/messages`);
+            return {
+              ...conv,
+              messages,
+            };
+          } catch (e) {
+            return {
+              ...conv,
+              messages: [],
+            };
+          }
+        })
+      );
+      setConversations(conversationsWithMessages);
+    } catch (err) {
+      // Fallback para mock local se o servidor estiver inacessível
+      setConversations(INITIAL_CONVERSATIONS);
+    }
+  };
+
+  useEffect(() => {
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 5000); // Polling a cada 5s
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
+  const sendMessage = async (conversationId: string, text: string) => {
     if (!text.trim()) return;
 
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
+    const localMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: user?.email || 'Eu',
+      text: text.trim(),
+      timestamp: timeStr,
+      isUser: true,
+    };
+
     setConversations((prev) =>
       prev.map((conv) => {
         if (conv.id === conversationId) {
-          const newMessage: ChatMessage = {
-            id: Date.now().toString(),
-            sender: 'Ana Clara',
-            text: text.trim(),
-            timestamp: timeStr,
-            isUser: true,
-          };
           return {
             ...conv,
             lastMessage: text.trim(),
             lastTime: timeStr,
-            unreadCount: 0,
-            messages: [...conv.messages, newMessage],
+            messages: [...conv.messages, localMsg],
           };
         }
         return conv;
       })
     );
+
+    try {
+      await apiFetch(`/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ text: text.trim() }),
+      });
+      fetchConversations();
+    } catch (err) {
+      // Falha silenciosa
+    }
   };
 
-  const startOrOpenChat = (userName: string, userAvatar: string): string => {
-    const existing = conversations.find((c) => c.userName.toLowerCase() === userName.toLowerCase());
-    if (existing) {
-      return existing.id;
+  const startOrOpenChat = async (recipientId: string, userName: string, userAvatar: string): Promise<string> => {
+    try {
+      const res = await apiFetch<{ id: string }>('/api/conversations', {
+        method: 'POST',
+        body: JSON.stringify({ recipientId }),
+      });
+      await fetchConversations();
+      return res.id;
+    } catch (err) {
+      // Fallback caso sem conexão
+      const existing = conversations.find((c) => c.userName.toLowerCase() === userName.toLowerCase());
+      if (existing) {
+        return existing.id;
+      }
+
+      const newId = Date.now().toString();
+      const newConv: Conversation = {
+        id: newId,
+        userName,
+        userAvatar,
+        lastMessage: 'Iniciou uma conversa',
+        lastTime: 'Agora',
+        unreadCount: 0,
+        messages: [],
+      };
+
+      setConversations((prev) => [newConv, ...prev]);
+      return newId;
     }
-
-    const newId = Date.now().toString();
-    const newConv: Conversation = {
-      id: newId,
-      userName,
-      userAvatar,
-      lastMessage: 'Iniciou uma conversa',
-      lastTime: 'Agora',
-      unreadCount: 0,
-      messages: [],
-    };
-
-    setConversations((prev) => [newConv, ...prev]);
-    return newId;
   };
 
   return (
-    <ChatContext.Provider value={{ conversations, sendMessage, startOrOpenChat }}>
+    <ChatContext.Provider
+      value={{
+        conversations,
+        sendMessage,
+        startOrOpenChat,
+        refreshConversations: fetchConversations,
+      }}
+    >
       {children}
     </ChatContext.Provider>
   );

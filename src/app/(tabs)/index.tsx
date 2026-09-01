@@ -4,33 +4,34 @@ import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
-import { usePosts } from '@/context/PostsContext';
+import { Post, usePosts } from '@/context/PostsContext';
 import { useChat } from '@/context/ChatContext';
-import { useNotifications } from '@/context/NotificationsContext';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
+import { PostOptionsMenuModal } from '@/components/post-options-modal';
+import { EditPostModal } from '@/components/edit-post-modal';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function FeedScreen() {
   const theme = useTheme();
-  const { posts, toggleLike } = usePosts();
+  const { posts, toggleLike, markAsResolved, deletePost, editPost, userProfile } = usePosts();
   const { startOrOpenChat } = useChat();
-  const { unreadCount } = useNotifications();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImages, setModalImages] = useState<string[]>([]);
   const [modalInitialIndex, setModalInitialIndex] = useState(0);
 
+  const [optionsPost, setOptionsPost] = useState<Post | null>(null);
+  const [optionsVisible, setOptionsVisible] = useState(false);
+
+  const [editPostTarget, setEditPostTarget] = useState<Post | null>(null);
+  const [editVisible, setEditVisible] = useState(false);
+
   const openViewer = (images: string[], index: number) => {
     setModalImages(images);
     setModalInitialIndex(index);
     setModalVisible(true);
-  };
-
-  const handleOpenChat = (userName: string, userAvatar: string) => {
-    const chatId = startOrOpenChat(userName, userAvatar);
-    router.push(`/chat/${chatId}` as any);
   };
 
   const getTagColor = (type: string) => {
@@ -56,21 +57,6 @@ export default function FeedScreen() {
       <View style={styles.responsiveWrapper}>
         <ThemedView style={[styles.header, { borderBottomColor: theme.border }]}>
           <ThemedText type="title" style={{ fontSize: 24, color: theme.text }}>Início</ThemedText>
-          <Pressable 
-            style={({ pressed, hovered }: any) => [
-              styles.bellButton,
-              hovered && { backgroundColor: 'rgba(255, 107, 107, 0.12)', borderRadius: 20 },
-              pressed && { opacity: 0.7, transform: [{ scale: 0.94 }] }
-            ]} 
-            onPress={() => router.push('/notifications' as any)}
-          >
-            <MaterialIcons name="notifications-none" size={26} color={theme.text} />
-            {unreadCount > 0 && (
-              <View style={[styles.bellBadge, { backgroundColor: theme.brand }]}>
-                <ThemedText style={styles.bellBadgeText}>{unreadCount}</ThemedText>
-              </View>
-            )}
-          </Pressable>
         </ThemedView>
 
         <FlatList
@@ -86,14 +72,39 @@ export default function FeedScreen() {
                 <Image source={{ uri: item.avatar }} style={styles.avatar} resizeMode="cover" />
                 <View style={styles.postContent}>
                   <View style={styles.postHeader}>
-                    <ThemedText style={styles.userName}>{item.user}</ThemedText>
-                    <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
+                    <View style={styles.postUserInfo}>
+                      <ThemedText style={styles.userName}>{item.user}</ThemedText>
+                      <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
+                    </View>
+
+                    <Pressable
+                      style={({ pressed, hovered }: any) => [
+                        styles.moreBtn,
+                        hovered && { backgroundColor: theme.backgroundElement },
+                        pressed && { opacity: 0.7 },
+                      ]}
+                      onPress={() => {
+                        setOptionsPost(item);
+                        setOptionsVisible(true);
+                      }}
+                    >
+                      <MaterialIcons name="more-horiz" size={20} color={theme.textSecondary} />
+                    </Pressable>
                   </View>
                   
-                  <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
-                    <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
-                      {getTagLabel(item.type)}
-                    </ThemedText>
+                  <View style={styles.badgesRow}>
+                    <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
+                      <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
+                        {getTagLabel(item.type)}
+                      </ThemedText>
+                    </View>
+
+                    {item.isResolved && (
+                      <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
+                        <MaterialIcons name="verified" size={14} color="#FFF" />
+                        <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
+                      </View>
+                    )}
                   </View>
 
                   <ThemedText style={styles.textContent}>{item.content}</ThemedText>
@@ -156,6 +167,25 @@ export default function FeedScreen() {
           initialIndex={modalInitialIndex}
           onClose={() => setModalVisible(false)}
         />
+
+        <PostOptionsMenuModal
+          visible={optionsVisible}
+          post={optionsPost}
+          onClose={() => setOptionsVisible(false)}
+          onToggleResolved={(id) => markAsResolved(id)}
+          onEdit={(p) => {
+            setEditPostTarget(p);
+            setEditVisible(true);
+          }}
+          onDelete={(id) => deletePost(id)}
+        />
+
+        <EditPostModal
+          visible={editVisible}
+          post={editPostTarget}
+          onClose={() => setEditVisible(false)}
+          onSave={(id, newContent) => editPost(id, newContent)}
+        />
       </View>
     </SafeAreaView>
   );
@@ -178,26 +208,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
   },
-  bellButton: {
-    position: 'relative',
-    padding: 4,
-  },
-  bellBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  bellBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
   postContainer: {
     flexDirection: 'row',
     padding: 16,
@@ -215,18 +225,48 @@ const styles = StyleSheet.create({
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  postUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   userName: {
     fontWeight: '700',
     fontSize: 16,
+  },
+  moreBtn: {
+    padding: 4,
+    borderRadius: 16,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    flexWrap: 'wrap',
   },
   tagBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    marginBottom: 8,
+  },
+  resolvedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  resolvedBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   textContent: {
     lineHeight: 22,
@@ -250,13 +290,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: 10,
   },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    maxWidth: 240,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  }
 });

@@ -1,7 +1,9 @@
+import { apiFetch, isPostgresApiConfigured, uploadImageToPostgres } from '@/lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jwtDecode } from 'jwt-decode';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { AccountType, DbProfile } from '@/types/supabase';
+
+export type AccountType = 'tutor' | 'ong' | 'protetor' | 'fisica';
 
 export interface UserProfileData {
   id?: string;
@@ -13,6 +15,13 @@ export interface UserProfileData {
   city?: string;
   state?: string;
   isVerified?: boolean;
+}
+
+export interface DecodedToken {
+  userId: string;
+  email: string;
+  exp?: number;
+  iat?: number;
 }
 
 interface SignUpParams {
@@ -30,10 +39,11 @@ interface SignInParams {
 }
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: { id: string; email: string } | null;
+  session: { token: string } | null;
   profile: UserProfileData | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   isConfigured: boolean;
   signUp: (params: SignUpParams) => Promise<{ error: string | null }>;
   signIn: (params: SignInParams) => Promise<{ error: string | null }>;
@@ -41,11 +51,26 @@ interface AuthContextType {
   updateProfile: (data: Partial<UserProfileData>) => Promise<{ error: string | null }>;
 }
 
+export function isTokenValid(token: string | null | undefined): boolean {
+  if (!token) return false;
+  try {
+    const decoded = jwtDecode<DecodedToken>(token);
+    if (!decoded) return false;
+    if (decoded.exp) {
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      return decoded.exp > nowInSeconds;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 const DEFAULT_PROFILE: UserProfileData = {
   id: 'demo-user-1',
   name: 'Ana Clara',
   username: '@anaclara',
-  accountType: 'fisica',
+  accountType: 'tutor',
   bio: 'Amante de animais, sempre ajudando a encontrar os pets perdidos do bairro! 🐶🐱',
   avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
   city: 'São Paulo',
@@ -57,90 +82,104 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   profile: DEFAULT_PROFILE,
-  isLoading: false,
-  isConfigured: isSupabaseConfigured,
+  isLoading: true,
+  isAuthenticated: false,
+  isConfigured: isPostgresApiConfigured,
   signUp: async () => ({ error: null }),
   signIn: async () => ({ error: null }),
-  signOut: async () => {},
+  signOut: async () => { },
   updateProfile: async () => ({ error: null }),
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  const [session, setSession] = useState<{ token: string } | null>(null);
   const [profile, setProfile] = useState<UserProfileData | null>(DEFAULT_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.warn('Erro ao buscar perfil:', error.message);
-        return;
-      }
-
-      if (data) {
-        const dbProfile = data as DbProfile;
-        setProfile({
-          id: dbProfile.id,
-          name: dbProfile.name,
-          username: dbProfile.username,
-          accountType: dbProfile.account_type,
-          bio: dbProfile.bio || '',
-          avatarUrl: dbProfile.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-          city: dbProfile.city || '',
-          state: dbProfile.state || '',
-          isVerified: dbProfile.is_verified,
-        });
-      }
-    } catch (e) {
-      console.warn('Exceção ao buscar perfil:', e);
-    }
-  };
-
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setIsLoading(false);
-      return;
+    async function checkAuthStatus() {
+      try {
+        const storedToken = await AsyncStorage.getItem('petx_token');
+        if (storedToken && isTokenValid(storedToken)) {
+          setSession({ token: storedToken });
+          const decoded = jwtDecode<DecodedToken>(storedToken);
+          setUser({ id: decoded.userId, email: decoded.email });
+
+          try {
+            const res = await apiFetch('/api/auth/me');
+            if (res && res.user) {
+              setUser(res.user);
+              if (res.profile) {
+                setProfile({
+                  id: res.profile.user_id,
+                  name: res.profile.name,
+                  username: res.profile.username,
+                  accountType: res.profile.account_type || 'tutor',
+                  bio: res.profile.bio || '',
+                  avatarUrl: res.profile.avatar_url || DEFAULT_PROFILE.avatarUrl,
+                  city: res.profile.city || 'São Paulo',
+                  state: res.profile.state || 'SP',
+                  isVerified: res.profile.account_type === 'ong',
+                });
+              }
+            }
+          } catch (fetchError) {
+            // Backend offline but token is valid locally
+          }
+        } else {
+          // Token expired or invalid
+          if (storedToken) {
+            await AsyncStorage.removeItem('petx_token');
+          }
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
+      } catch (err) {
+        setSession(null);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      setIsLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setProfile(DEFAULT_PROFILE);
-      }
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    checkAuthStatus();
   }, []);
 
   const signUp = async ({ email, password = '', name, accountType, city, state }: SignUpParams) => {
-    if (!isSupabaseConfigured) {
-      // Demo fallback mode
+    try {
       const username = '@' + name.toLowerCase().replace(/\s+/g, '');
+      const res = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, name, username, accountType, city, state }),
+      });
+
+      if (res.token) {
+        await AsyncStorage.setItem('petx_token', res.token);
+        setSession({ token: res.token });
+        setUser(res.user);
+        if (res.profile) {
+          setProfile({
+            id: res.profile.user_id,
+            name: res.profile.name,
+            username: res.profile.username,
+            accountType: res.profile.account_type || accountType,
+            bio: res.profile.bio || '',
+            avatarUrl: res.profile.avatar_url || DEFAULT_PROFILE.avatarUrl,
+            city: city || 'São Paulo',
+            state: state || 'SP',
+            isVerified: accountType === 'ong',
+          });
+        }
+        return { error: null };
+      }
+    } catch (err: any) {
+      // Demo fallback if backend is offline
       const mockProfile: UserProfileData = {
         id: Date.now().toString(),
         name,
-        username,
+        username: '@' + name.toLowerCase().replace(/\s+/g, ''),
         accountType,
         city: city || 'São Paulo',
         state: state || 'SP',
@@ -153,64 +192,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(mockProfile);
       return { error: null };
     }
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) return { error: error.message };
-
-      if (data.user) {
-        const username = '@' + name.toLowerCase().replace(/\s+/g, '');
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: data.user.id,
-          name,
-          username,
-          account_type: accountType,
-          city,
-          state,
-          is_verified: accountType === 'ong',
-          avatar_url: accountType === 'ong'
-            ? 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80'
-            : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-        });
-
-        if (profileError) {
-          console.warn('Erro ao criar perfil:', profileError.message);
-        } else {
-          await fetchProfile(data.user.id);
-        }
-      }
-      return { error: null };
-    } catch (err: any) {
-      return { error: err?.message || 'Ocorreu um erro ao cadastrar.' };
-    }
+    return { error: null };
   };
 
   const signIn = async ({ email, password = '' }: SignInParams) => {
-    if (!isSupabaseConfigured) {
-      // Demo fallback mode
-      return { error: null };
-    }
-
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const res = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
       });
-      if (error) return { error: error.message };
-      return { error: null };
+
+      if (res.token) {
+        await AsyncStorage.setItem('petx_token', res.token);
+        setSession({ token: res.token });
+        setUser(res.user);
+        if (res.profile) {
+          setProfile({
+            id: res.profile.user_id,
+            name: res.profile.name,
+            username: res.profile.username,
+            accountType: res.profile.account_type || 'tutor',
+            bio: res.profile.bio || '',
+            avatarUrl: res.profile.avatar_url || DEFAULT_PROFILE.avatarUrl,
+            city: res.profile.city || 'São Paulo',
+            state: res.profile.state || 'SP',
+            isVerified: res.profile.account_type === 'ong',
+          });
+        }
+        return { error: null };
+      }
     } catch (err: any) {
       return { error: err?.message || 'Erro ao realizar login.' };
     }
+    return { error: null };
   };
 
   const signOut = async () => {
-    if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
-    }
+    try {
+      await AsyncStorage.removeItem('petx_token');
+    } catch (e) { }
     setUser(null);
     setSession(null);
     setProfile(DEFAULT_PROFILE);
@@ -220,39 +240,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!profile) return { error: 'Perfil não carregado.' };
 
     let uploadedAvatarUrl = data.avatarUrl;
-    if (data.avatarUrl && isSupabaseConfigured && (data.avatarUrl.startsWith('file:') || data.avatarUrl.startsWith('blob:') || data.avatarUrl.startsWith('data:'))) {
-      const { uploadImageToSupabase } = await import('@/lib/supabase');
-      uploadedAvatarUrl = await uploadImageToSupabase(data.avatarUrl, 'avatars');
+    if (data.avatarUrl && (data.avatarUrl.startsWith('file:') || data.avatarUrl.startsWith('blob:') || data.avatarUrl.startsWith('data:'))) {
+      uploadedAvatarUrl = await uploadImageToPostgres(data.avatarUrl);
     }
 
-    const updatedProfile = { 
-      ...profile, 
+    const updatedProfile = {
+      ...profile,
       ...data,
-      avatarUrl: uploadedAvatarUrl || profile.avatarUrl 
+      avatarUrl: uploadedAvatarUrl || profile.avatarUrl
     };
     setProfile(updatedProfile);
 
-    if (isSupabaseConfigured && user) {
-      try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: data.name ?? profile.name,
-            username: data.username ?? profile.username,
-            bio: data.bio ?? profile.bio,
-            avatar_url: uploadedAvatarUrl ?? profile.avatarUrl,
-            city: data.city ?? profile.city,
-            state: data.state ?? profile.state,
-          })
-          .eq('id', user.id);
-
-        if (error) return { error: error.message };
-      } catch (err: any) {
-        return { error: err?.message || 'Erro ao atualizar perfil.' };
-      }
+    try {
+      await apiFetch('/api/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: data.name ?? profile.name,
+          username: data.username ?? profile.username,
+          bio: data.bio ?? profile.bio,
+          avatarUrl: uploadedAvatarUrl ?? profile.avatarUrl,
+          city: data.city ?? profile.city,
+          state: data.state ?? profile.state,
+        }),
+      });
+    } catch (err: any) {
+      // Silently fall back to local state if backend is offline
     }
+
     return { error: null };
   };
+
+  const isAuthenticated = Boolean(session?.token && isTokenValid(session.token));
 
   return (
     <AuthContext.Provider
@@ -261,7 +279,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         profile,
         isLoading,
-        isConfigured: isSupabaseConfigured,
+        isAuthenticated,
+        isConfigured: isPostgresApiConfigured,
         signUp,
         signIn,
         signOut,

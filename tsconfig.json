@@ -1,6 +1,8 @@
 {
   "extends": "expo/tsconfig.base.json",
   "compilerOptions": {
+    "moduleResolution": "bundler",
+    "types": ["node"],
     "strict": true,
     "paths": {
       "@/*": [

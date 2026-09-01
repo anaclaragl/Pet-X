@@ -1,9 +1,11 @@
 import { EditProfileModal } from '@/components/edit-profile-modal';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
+import { PostOptionsMenuModal } from '@/components/post-options-modal';
+import { EditPostModal } from '@/components/edit-post-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { usePosts } from '@/context/PostsContext';
+import { Post, usePosts } from '@/context/PostsContext';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -13,12 +15,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const { theme, colorScheme, toggleTheme } = useAppTheme();
-  const { userPosts, userProfile, toggleLike } = usePosts();
+  const { userPosts, userProfile, toggleLike, markAsResolved, deletePost, editPost } = usePosts();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImages, setModalImages] = useState<string[]>([]);
   const [modalInitialIndex, setModalInitialIndex] = useState(0);
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
+
+  const [optionsPost, setOptionsPost] = useState<Post | null>(null);
+  const [optionsVisible, setOptionsVisible] = useState(false);
+
+  const [editPostTarget, setEditPostTarget] = useState<Post | null>(null);
+  const [editPostVisible, setEditPostVisible] = useState(false);
 
   const openViewer = (images: string[], index: number) => {
     setModalImages(images);
@@ -44,6 +52,8 @@ export default function ProfileScreen() {
     }
   };
 
+  const resolvedCount = userPosts.filter(p => p.isResolved).length;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.responsiveWrapper}>
@@ -68,14 +78,14 @@ export default function ProfileScreen() {
                 <ThemedText style={{ color: theme.textSecondary }}>{userPosts.length === 1 ? 'Post' : 'Posts'}</ThemedText>
               </View>
               <View style={styles.statItem}>
-                <ThemedText style={[styles.statNumber, { color: theme.text }]}>4</ThemedText>
+                <ThemedText style={[styles.statNumber, { color: '#00BA7C' }]}>{resolvedCount}</ThemedText>
                 <ThemedText style={{ color: theme.textSecondary }}>Ajudou</ThemedText>
               </View>
             </View>
 
             <Pressable
               style={({ pressed }) => [styles.editButton, { borderColor: theme.border }, pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }]}
-              onPress={() => setEditModalVisible(true)}
+              onPress={() => setEditProfileModalVisible(true)}
             >
               <ThemedText style={{ fontWeight: '600' }}>Editar Perfil</ThemedText>
             </Pressable>
@@ -109,14 +119,39 @@ export default function ProfileScreen() {
                   <Image source={{ uri: item.avatar }} style={styles.postAvatar} resizeMode="cover" />
                   <View style={styles.postContent}>
                     <View style={styles.postHeader}>
-                      <ThemedText style={styles.userName}>{item.user}</ThemedText>
-                      <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
+                      <View style={styles.postUserInfo}>
+                        <ThemedText style={styles.userName}>{item.user}</ThemedText>
+                        <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
+                      </View>
+
+                      <Pressable
+                        style={({ pressed, hovered }: any) => [
+                          styles.moreBtn,
+                          hovered && { backgroundColor: theme.backgroundElement },
+                          pressed && { opacity: 0.7 },
+                        ]}
+                        onPress={() => {
+                          setOptionsPost(item);
+                          setOptionsVisible(true);
+                        }}
+                      >
+                        <MaterialIcons name="more-horiz" size={20} color={theme.textSecondary} />
+                      </Pressable>
                     </View>
 
-                    <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
-                      <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
-                        {getTagLabel(item.type)}
-                      </ThemedText>
+                    <View style={styles.badgesRow}>
+                      <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
+                        <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
+                          {getTagLabel(item.type)}
+                        </ThemedText>
+                      </View>
+
+                      {item.isResolved && (
+                        <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
+                          <MaterialIcons name="verified" size={14} color="#FFF" />
+                          <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
+                        </View>
+                      )}
                     </View>
 
                     <ThemedText style={styles.textContent}>{item.content}</ThemedText>
@@ -182,8 +217,27 @@ export default function ProfileScreen() {
         />
 
         <EditProfileModal
-          visible={editModalVisible}
-          onClose={() => setEditModalVisible(false)}
+          visible={editProfileModalVisible}
+          onClose={() => setEditProfileModalVisible(false)}
+        />
+
+        <PostOptionsMenuModal
+          visible={optionsVisible}
+          post={optionsPost}
+          onClose={() => setOptionsVisible(false)}
+          onToggleResolved={(id) => markAsResolved(id)}
+          onEdit={(p) => {
+            setEditPostTarget(p);
+            setEditPostVisible(true);
+          }}
+          onDelete={(id) => deletePost(id)}
+        />
+
+        <EditPostModal
+          visible={editPostVisible}
+          post={editPostTarget}
+          onClose={() => setEditPostVisible(false)}
+          onSave={(id, newContent) => editPost(id, newContent)}
         />
       </View>
     </SafeAreaView>
@@ -268,18 +322,48 @@ const styles = StyleSheet.create({
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  postUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   userName: {
     fontWeight: '700',
     fontSize: 16,
+  },
+  moreBtn: {
+    padding: 4,
+    borderRadius: 16,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    flexWrap: 'wrap',
   },
   tagBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    marginBottom: 8,
+  },
+  resolvedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  resolvedBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   textContent: {
     lineHeight: 22,
@@ -303,13 +387,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: 10,
   },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    maxWidth: 240,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  }
 });
