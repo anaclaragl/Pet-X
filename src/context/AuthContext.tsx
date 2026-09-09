@@ -48,7 +48,7 @@ interface AuthContextType {
   signUp: (params: SignUpParams) => Promise<{ error: string | null }>;
   signIn: (params: SignInParams) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfileData>) => Promise<{ error: string | null }>;
+  updateProfile: (data: Partial<UserProfileData>) => Promise<{ error: string | null; suggestion?: string }>;
 }
 
 export function isTokenValid(token: string | null | undefined): boolean {
@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(DEFAULT_PROFILE);
   };
 
-  const updateProfile = async (data: Partial<UserProfileData>) => {
+  const updateProfile = async (data: Partial<UserProfileData>): Promise<{ error: string | null; suggestion?: string }> => {
     if (!profile) return { error: 'Perfil não carregado.' };
 
     let uploadedAvatarUrl = data.avatarUrl;
@@ -244,15 +244,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       uploadedAvatarUrl = await uploadImageToPostgres(data.avatarUrl);
     }
 
-    const updatedProfile = {
-      ...profile,
-      ...data,
-      avatarUrl: uploadedAvatarUrl || profile.avatarUrl
-    };
-    setProfile(updatedProfile);
-
     try {
-      await apiFetch('/api/auth/profile', {
+      const res = await apiFetch('/api/auth/profile', {
         method: 'PUT',
         body: JSON.stringify({
           name: data.name ?? profile.name,
@@ -263,11 +256,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           state: data.state ?? profile.state,
         }),
       });
-    } catch (err: any) {
-      // Silently fall back to local state if backend is offline
-    }
 
-    return { error: null };
+      const updatedProfile: UserProfileData = {
+        ...profile,
+        ...data,
+        username: res?.username || data.username || profile.username,
+        avatarUrl: uploadedAvatarUrl || profile.avatarUrl,
+      };
+      setProfile(updatedProfile);
+      return { error: null };
+    } catch (err: any) {
+      return {
+        error: err.message || 'Erro ao atualizar perfil',
+        suggestion: err.suggestion,
+      };
+    }
   };
 
   const isAuthenticated = Boolean(session?.token && isTokenValid(session.token));

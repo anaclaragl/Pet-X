@@ -6,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('./db');
+const { username_generator } = require('./services/username_generator');
 require('dotenv').config();
 
 const app = express();
@@ -26,7 +27,17 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}_${Math.random().toString(36).substring(7)}${ext}`);
   },
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas arquivos de imagem são permitidos.'));
+    }
+  },
+});
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -70,10 +81,10 @@ app.post('/api/auth/register', async (req, res) => {
     );
 
     const profileId = generateId();
-    const finalUsername = username || `@${name.toLowerCase().replace(/\s+/g, '')}`;
+    const generatedUsername = await username_generator(name);
     await db.query(
       'INSERT INTO profiles (id, user_id, name, username, bio, avatar_url, city, state, account_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-      [profileId, userId, name, finalUsername, bio || '', avatarUrl || '', city || '', state || '', accountType || 'tutor']
+      [profileId, userId, name, generatedUsername, bio || '', avatarUrl || '', city || '', state || '', accountType || 'tutor']
     );
 
     const token = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '30d' });
@@ -122,9 +133,46 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/auth/profile', authenticateToken, async (req, res) => {
-  const { name, username, bio, avatarUrl, city, state } = req.body;
+app.get('/api/auth/check-username', authenticateToken, async (req, res) => {
+  const rawUsername = req.query.username;
+  if (!rawUsername) return res.status(400).json({ error: 'Username é obrigatório' });
+  const cleanUsername = rawUsername.trim().startsWith('@') ? rawUsername.trim() : `@${rawUsername.trim()}`;
   try {
+    const exists = await db.query('SELECT id, user_id FROM profiles WHERE LOWER(username) = LOWER($1)', [cleanUsername]);
+    if (exists.rows.length > 0 && exists.rows[0].user_id !== req.user.userId) {
+      const suggestion = await username_generator(cleanUsername);
+      return res.json({ available: false, suggestion });
+    }
+    return res.json({ available: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao verificar disponibilidade' });
+  }
+});
+
+app.put('/api/auth/profile', authenticateToken, async (req, res) => {
+  let { name, username, bio, avatarUrl, city, state } = req.body;
+  try {
+    const profileRes = await db.query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId]);
+    if (profileRes.rows.length <= 0) return res.status(404).json({ error: 'Perfil não encontrado' });
+    const currentProfile = profileRes.rows[0];
+
+    if (username !== undefined && username !== null && username.trim() !== '') {
+      const cleanUsername = username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`;
+      
+      // Se for diferente do username atual do usuário, verifica se já pertence a outro
+      if (cleanUsername.toLowerCase() !== (currentProfile.username || '').toLowerCase()) {
+        const exists = await db.query('SELECT id, user_id FROM profiles WHERE LOWER(username) = LOWER($1)', [cleanUsername]);
+        if (exists.rows.length > 0 && exists.rows[0].user_id !== req.user.userId) {
+          const suggestion = await username_generator(cleanUsername);
+          return res.status(400).json({
+            error: 'Este nome de usuário já está em uso.',
+            suggestion,
+          });
+        }
+      }
+      username = cleanUsername;
+    }
+
     await db.query(
       'UPDATE profiles SET name = COALESCE($1, name), username = COALESCE($2, username), bio = COALESCE($3, bio), avatar_url = COALESCE($4, avatar_url), city = COALESCE($5, city), state = COALESCE($6, state) WHERE user_id = $7',
       [name, username, bio, avatarUrl, city, state, req.user.userId]
@@ -133,7 +181,96 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
     const updated = await db.query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId]);
     res.json(updated.rows[0]);
   } catch (err) {
+    console.error('Erro ao atualizar perfil:', err);
     res.status(500).json({ error: 'Erro ao atualizar perfil' });
+  }
+});
+
+app.get('/api/users/:id/profile', async (req, res) => {
+  const targetUserId = req.params.id;
+  let currentUserId = null;
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      currentUserId = decoded.userId;
+    } catch (err) {
+      // Token inválido ignorado
+    }
+  }
+
+  try {
+    const profileRes = await db.query('SELECT * FROM profiles WHERE user_id = $1', [targetUserId]);
+    if (profileRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const query = `
+      SELECT p.id, p.user_id, p.type, p.content, p.likes_count, p.is_resolved, p.created_at,
+             pr.name as user_name, pr.avatar_url as avatar, pr.city as user_city, pr.state as user_state,
+             COALESCE(
+               (SELECT json_agg(image_url) FROM post_images WHERE post_id = p.id),
+               '[]'::json
+             ) as images,
+             COALESCE(
+               (SELECT json_agg(json_build_object(
+                 'id', c.id,
+                 'content', c.content,
+                 'time', c.created_at,
+                 'user', c_pr.name,
+                 'avatar', c_pr.avatar_url,
+                 'userId', c.user_id
+               )) FROM comments c JOIN profiles c_pr ON c.user_id = c_pr.user_id WHERE c.post_id = p.id),
+               '[]'::json
+             ) as comments,
+             EXISTS (
+               SELECT 1 FROM likes WHERE user_id = $2 AND post_id = p.id
+             ) as is_liked
+      FROM posts p
+      JOIN profiles pr ON p.user_id = pr.user_id
+      WHERE p.user_id = $1
+      ORDER BY p.created_at DESC
+    `;
+
+    const postsRes = await db.query(query, [targetUserId, currentUserId]);
+    const formattedPosts = postsRes.rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      user: row.user_name || 'Usuário',
+      avatar: row.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+      city: row.user_city || '',
+      state: row.user_state || '',
+      type: row.type,
+      content: row.content,
+      images: row.images,
+      image: row.images && row.images.length > 0 ? row.images[0] : null,
+      time: 'Recente',
+      likesCount: row.likes_count || 0,
+      isLiked: row.is_liked || false,
+      isResolved: row.is_resolved || false,
+      commentsCount: row.comments ? row.comments.length : 0,
+      comments: row.comments.map(c => {
+        const msgTime = new Date(c.time);
+        const timeStr = `${msgTime.getHours().toString().padStart(2, '0')}:${msgTime.getMinutes().toString().padStart(2, '0')}`;
+        return {
+          id: c.id,
+          userId: c.userId,
+          user: c.user,
+          avatar: c.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+          content: c.content,
+          time: timeStr
+        };
+      })
+    }));
+
+    res.json({
+      profile: profileRes.rows[0],
+      posts: formattedPosts
+    });
+  } catch (err) {
+    console.error('Erro ao buscar perfil do usuário:', err);
+    res.status(500).json({ error: 'Erro ao buscar perfil' });
   }
 });
 
@@ -155,7 +292,7 @@ app.get('/api/posts', async (req, res) => {
   try {
     const query = `
       SELECT p.id, p.user_id, p.type, p.content, p.likes_count, p.is_resolved, p.created_at,
-             pr.name as user_name, pr.avatar_url as avatar,
+             pr.name as user_name, pr.avatar_url as avatar, pr.city as user_city, pr.state as user_state,
              COALESCE(
                (SELECT json_agg(image_url) FROM post_images WHERE post_id = p.id),
                '[]'
@@ -186,6 +323,8 @@ app.get('/api/posts', async (req, res) => {
       userId: row.user_id,
       user: row.user_name || 'Usuário',
       avatar: row.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+      city: row.user_city || '',
+      state: row.user_state || '',
       type: row.type,
       content: row.content,
       images: row.images,
@@ -585,7 +724,7 @@ app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
 
 // ==================== MEDIA UPLOAD ROUTE ====================
 
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
   const host = req.get('host');
   const protocol = req.protocol;

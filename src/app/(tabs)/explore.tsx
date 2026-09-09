@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { StyleSheet, TextInput, View, FlatList, Image, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, View, FlatList, Image, Pressable, ScrollView, Share, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
-import { usePosts } from '@/context/PostsContext';
+import { Post, usePosts } from '@/context/PostsContext';
+import { useAuth } from '@/context/AuthContext';
 import { useChat } from '@/context/ChatContext';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
+import { PostOptionsMenuModal } from '@/components/post-options-modal';
+import { EditPostModal } from '@/components/edit-post-modal';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SearchScreen() {
   const theme = useTheme();
-  const { posts, toggleLike } = usePosts();
+  const { user: currentUser } = useAuth();
+  const { posts, toggleLike, markAsResolved, deletePost, editPost } = usePosts();
   const { startOrOpenChat } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,15 +27,27 @@ export default function SearchScreen() {
   const [modalImages, setModalImages] = useState<string[]>([]);
   const [modalInitialIndex, setModalInitialIndex] = useState(0);
 
+  const [optionsPost, setOptionsPost] = useState<Post | null>(null);
+  const [optionsVisible, setOptionsVisible] = useState(false);
+
+  const [editPostTarget, setEditPostTarget] = useState<Post | null>(null);
+  const [editVisible, setEditVisible] = useState(false);
+
   const openViewer = (images: string[], index: number) => {
     setModalImages(images);
     setModalInitialIndex(index);
     setModalVisible(true);
   };
 
-  const handleOpenChat = async (recipientId: string, userName: string, userAvatar: string) => {
-    const chatId = await startOrOpenChat(recipientId, userName, userAvatar);
-    router.push(`/chat/${chatId}` as any);
+  const handleShare = async (post: Post) => {
+    try {
+      await Share.share({
+        title: `Pet-X: ${getTagLabel(post.type)} - ${post.user}`,
+        message: `🐾 [Pet-X] ${getTagLabel(post.type).toUpperCase()}: ${post.content}\nPublicado por ${post.user}`,
+      });
+    } catch (err) {
+      // Falha silenciosa
+    }
   };
 
   const categories = [
@@ -47,7 +63,9 @@ export default function SearchScreen() {
     const matchesQuery = !query || 
       post.content.toLowerCase().includes(query) ||
       post.user.toLowerCase().includes(query) ||
-      post.type.toLowerCase().includes(query);
+      post.type.toLowerCase().includes(query) ||
+      (post.city && post.city.toLowerCase().includes(query)) ||
+      (post.state && post.state.toLowerCase().includes(query));
 
     return matchesCategory && matchesQuery;
   });
@@ -78,7 +96,7 @@ export default function SearchScreen() {
             <MaterialIcons name="search" size={24} color={theme.textSecondary} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Buscar por pet, usuário ou palavra..."
+              placeholder="Buscar por pet, usuário, cidade ou palavra..."
               placeholderTextColor={theme.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -137,23 +155,71 @@ export default function SearchScreen() {
               const postImages: string[] = item.images && item.images.length > 0 
                 ? item.images 
                 : (item.image ? [item.image] : []);
+              
+              const isPostOwner = item.userId === currentUser?.id;
 
               return (
                 <View style={[styles.postContainer, { borderBottomColor: theme.border }]}>
-                  <Image source={{ uri: item.avatar }} style={styles.avatar} resizeMode="cover" />
+                  <Pressable
+                    onPress={() => {
+                      if (isPostOwner) {
+                        router.push('/(tabs)/profile' as any);
+                      } else {
+                        router.push(`/profile/${item.userId}` as any);
+                      }
+                    }}
+                  >
+                    <Image source={{ uri: item.avatar }} style={styles.avatar} resizeMode="cover" />
+                  </Pressable>
                   <View style={styles.postContent}>
                     <View style={styles.postHeader}>
-                      <ThemedText style={styles.userName}>{item.user}</ThemedText>
-                      <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
+                      <Pressable
+                        style={styles.postUserInfo}
+                        onPress={() => {
+                          if (isPostOwner) {
+                            router.push('/(tabs)/profile' as any);
+                          } else {
+                            router.push(`/profile/${item.userId}` as any);
+                          }
+                        }}
+                      >
+                        <ThemedText style={styles.userName}>{item.user}</ThemedText>
+                        <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
+                      </Pressable>
+                      {isPostOwner && (
+                        <Pressable style={styles.moreBtn} onPress={() => { setOptionsPost(item); setOptionsVisible(true); }}>
+                          <MaterialIcons name="more-horiz" size={20} color={theme.textSecondary} />
+                        </Pressable>
+                      )}
                     </View>
                     
-                    <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
-                      <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
-                        {getTagLabel(item.type)}
-                      </ThemedText>
-                    </View>
+                    <Pressable onPress={() => router.push(`/post/${item.id}` as any)}>
+                      <View style={styles.badgesRow}>
+                        <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
+                          <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
+                            {getTagLabel(item.type)}
+                          </ThemedText>
+                        </View>
 
-                    <ThemedText style={styles.textContent}>{item.content}</ThemedText>
+                        {Boolean(item.city || item.state) ? (
+                          <View style={[styles.locationBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                            <MaterialIcons name="location-on" size={13} color={theme.textSecondary} />
+                            <ThemedText style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>
+                              {[item.city, item.state].filter(Boolean).join(', ')}
+                            </ThemedText>
+                          </View>
+                        ) : null}
+
+                        {Boolean(item.isResolved) ? (
+                          <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
+                            <MaterialIcons name="verified" size={14} color="#FFF" />
+                            <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
+                          </View>
+                        ) : null}
+                      </View>
+
+                      <ThemedText style={styles.textContent}>{item.content}</ThemedText>
+                    </Pressable>
 
                     {/* Photos Gallery */}
                     {postImages.length === 1 && (
@@ -200,6 +266,7 @@ export default function SearchScreen() {
                       commentsCount={item.commentsCount}
                       onLike={() => toggleLike(item.id)}
                       onComment={() => router.push(`/post/${item.id}` as any)}
+                      onShare={() => handleShare(item)}
                     />
                   </View>
                 </View>
@@ -213,6 +280,25 @@ export default function SearchScreen() {
           images={modalImages}
           initialIndex={modalInitialIndex}
           onClose={() => setModalVisible(false)}
+        />
+        
+        <PostOptionsMenuModal
+          visible={optionsVisible}
+          post={optionsPost}
+          onClose={() => setOptionsVisible(false)}
+          onToggleResolved={(postId) => markAsResolved(postId)}
+          onEdit={(post) => {
+            setEditPostTarget(post);
+            setEditVisible(true);
+          }}
+          onDelete={(postId) => deletePost(postId)}
+        />
+
+        <EditPostModal
+          visible={editVisible}
+          post={editPostTarget}
+          onClose={() => setEditVisible(false)}
+          onSave={(postId, newContent) => editPost(postId, newContent)}
         />
       </View>
     </SafeAreaView>
@@ -280,7 +366,22 @@ const styles = StyleSheet.create({
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  postUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  moreBtn: {
+    padding: 4,
+    borderRadius: 12,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
   },
   userName: {
     fontWeight: '700',
@@ -291,7 +392,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
+  },
+  resolvedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  resolvedBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   textContent: {
     lineHeight: 22,

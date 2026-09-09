@@ -20,12 +20,19 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
   const [bio, setBio] = useState(userProfile.bio);
   const [avatar, setAvatar] = useState(userProfile.avatar);
 
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
     if (visible) {
       setName(userProfile.name);
       setUsername(userProfile.username);
       setBio(userProfile.bio);
       setAvatar(userProfile.avatar);
+      setUsernameError(null);
+      setUsernameSuggestion(null);
+      setIsSaving(false);
     }
   }, [visible, userProfile]);
 
@@ -49,14 +56,42 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
     }
   };
 
-  const handleSave = () => {
-    updateUserProfile({
-      name: name.trim() || userProfile.name,
-      username: username.trim().startsWith('@') ? username.trim() : `@${username.trim()}`,
-      bio: bio.trim(),
-      avatar,
-    });
-    onClose();
+  const handleSave = async () => {
+    if (isSaving) return;
+    
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      setUsernameError('O nome de usuário não pode ficar vazio.');
+      return;
+    }
+
+    setIsSaving(true);
+    setUsernameError(null);
+    setUsernameSuggestion(null);
+
+    try {
+      const formattedUsername = trimmedUsername.startsWith('@') ? trimmedUsername : `@${trimmedUsername}`;
+      const res = await updateUserProfile({
+        name: name.trim() || userProfile.name,
+        username: formattedUsername,
+        bio: bio.trim(),
+        avatar,
+      });
+
+      if (res && res.error) {
+        setUsernameError(res.error);
+        if (res.suggestion) {
+          setUsernameSuggestion(res.suggestion);
+        }
+        return; // Não fecha o modal caso haja erro
+      }
+
+      onClose();
+    } catch (err: any) {
+      setUsernameError(err.message || 'Erro ao salvar alterações.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -68,15 +103,18 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
         >
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <Pressable onPress={onClose} style={({ pressed }) => [styles.cancelButton, pressed && { opacity: 0.6 }]}>
+            <Pressable onPress={onClose} disabled={isSaving} style={({ pressed }) => [styles.cancelButton, pressed && { opacity: 0.6 }]}>
               <ThemedText style={{ color: theme.textSecondary }}>Cancelar</ThemedText>
             </Pressable>
             <ThemedText type="subtitle" style={{ fontSize: 18 }}>Editar Perfil</ThemedText>
             <Pressable
-              style={({ pressed }) => [styles.saveButton, { backgroundColor: theme.brand }, pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
+              style={({ pressed }) => [styles.saveButton, { backgroundColor: theme.brand }, (pressed || isSaving) && { opacity: 0.8, transform: [{ scale: 0.97 }] }]}
               onPress={handleSave}
+              disabled={isSaving}
             >
-              <ThemedText style={{ color: '#FFF', fontWeight: '700' }}>Salvar</ThemedText>
+              <ThemedText style={{ color: '#FFF', fontWeight: '700' }}>
+                {isSaving ? 'Salvando...' : 'Salvar'}
+              </ThemedText>
             </Pressable>
           </View>
 
@@ -111,12 +149,56 @@ export function EditProfileModal({ visible, onClose }: EditProfileModalProps) {
             <View style={styles.fieldGroup}>
               <ThemedText style={[styles.label, { color: theme.textSecondary }]}>Nome de usuário</ThemedText>
               <TextInput
-                style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+                style={[
+                  styles.input,
+                  { color: theme.text, backgroundColor: theme.backgroundElement, borderColor: usernameError ? '#EF4444' : theme.border },
+                ]}
                 value={username}
-                onChangeText={setUsername}
+                onChangeText={(text) => {
+                  setUsername(text);
+                  if (usernameError) setUsernameError(null);
+                  if (usernameSuggestion) setUsernameSuggestion(null);
+                }}
                 placeholder="@usuario"
                 placeholderTextColor={theme.textSecondary}
+                autoCapitalize="none"
               />
+
+              {/* Mensagem de Erro / Aviso */}
+              {Boolean(usernameError) && (
+                <View style={styles.errorContainer}>
+                  <MaterialIcons name="error-outline" size={16} color="#EF4444" />
+                  <ThemedText style={styles.errorText}>{usernameError}</ThemedText>
+                </View>
+              )}
+
+              {/* Indicação / Sugestão de novo Username */}
+              {Boolean(usernameSuggestion) && (
+                <View style={styles.suggestionContainer}>
+                  <ThemedText style={[styles.suggestionLabel, { color: theme.textSecondary }]}>
+                    Sugestão:
+                  </ThemedText>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.suggestionChip,
+                      { borderColor: theme.brand, backgroundColor: theme.backgroundElement },
+                      pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] },
+                    ]}
+                    onPress={() => {
+                      if (usernameSuggestion) {
+                        setUsername(usernameSuggestion);
+                        setUsernameError(null);
+                        setUsernameSuggestion(null);
+                      }
+                    }}
+                  >
+                    <MaterialIcons name="auto-fix-high" size={14} color={theme.brand} />
+                    <ThemedText style={[styles.suggestionChipText, { color: theme.brand }]}>
+                      {usernameSuggestion}
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              )}
             </View>
 
             <View style={styles.fieldGroup}>
@@ -234,5 +316,43 @@ const styles = StyleSheet.create({
   bioInput: {
     height: 90,
     textAlignVertical: 'top',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  suggestionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  suggestionLabel: {
+    fontSize: 12,
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  suggestionChipText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

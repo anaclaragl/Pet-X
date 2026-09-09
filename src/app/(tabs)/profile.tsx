@@ -6,16 +6,18 @@ import { EditPostModal } from '@/components/edit-post-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Post, usePosts } from '@/context/PostsContext';
+import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Switch, View, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const { theme, colorScheme, toggleTheme } = useAppTheme();
   const { userPosts, userProfile, toggleLike, markAsResolved, deletePost, editPost } = usePosts();
+  const { signOut } = useAuth();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImages, setModalImages] = useState<string[]>([]);
@@ -32,6 +34,23 @@ export default function ProfileScreen() {
     setModalImages(images);
     setModalInitialIndex(index);
     setModalVisible(true);
+  };
+
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Tem certeza de que deseja sair da sua conta?')) {
+        signOut();
+      }
+    } else {
+      Alert.alert(
+        'Sair da Conta',
+        'Tem certeza de que deseja sair da sua conta?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Sair', style: 'destructive', onPress: () => signOut() },
+        ]
+      );
+    }
   };
 
   const getTagColor = (type: string) => {
@@ -66,6 +85,16 @@ export default function ProfileScreen() {
             />
             <ThemedText type="title" style={{ fontSize: 24, marginTop: 16 }}>{userProfile.name}</ThemedText>
             <ThemedText style={{ color: theme.textSecondary }}>{userProfile.username}</ThemedText>
+            
+            {Boolean(userProfile.city || userProfile.state) ? (
+              <View style={styles.locationRow}>
+                <MaterialIcons name="location-on" size={15} color={theme.textSecondary} />
+                <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
+                  {[userProfile.city, userProfile.state].filter(Boolean).join(', ')}
+                </ThemedText>
+              </View>
+            ) : null}
+
             {userProfile.bio ? (
               <ThemedText style={[styles.bio, { color: theme.text }]}>
                 {userProfile.bio}
@@ -83,12 +112,33 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            <Pressable
-              style={({ pressed }) => [styles.editButton, { borderColor: theme.border }, pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }]}
-              onPress={() => setEditProfileModalVisible(true)}
-            >
-              <ThemedText style={{ fontWeight: '600' }}>Editar Perfil</ThemedText>
-            </Pressable>
+            <View style={styles.actionButtonsRow}>
+              <Pressable
+                style={({ pressed, hovered }: any) => [
+                  styles.editButton, 
+                  { borderColor: theme.border }, 
+                  hovered && { backgroundColor: theme.backgroundElement },
+                  pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={() => setEditProfileModalVisible(true)}
+              >
+                <MaterialIcons name="edit" size={16} color={theme.text} style={{ marginRight: 6 }} />
+                <ThemedText style={{ fontWeight: '600', fontSize: 14 }}>Editar Perfil</ThemedText>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed, hovered }: any) => [
+                  styles.logoutButton, 
+                  { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }, 
+                  hovered && { backgroundColor: 'rgba(239, 68, 68, 0.16)' },
+                  pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={handleLogout}
+              >
+                <MaterialIcons name="logout" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                <ThemedText style={{ color: '#EF4444', fontWeight: '600', fontSize: 14 }}>Sair</ThemedText>
+              </Pressable>
+            </View>
           </ThemedView>
 
           <View style={[styles.themeToggle, { borderBottomColor: theme.border, borderTopColor: theme.border }]}>
@@ -146,12 +196,12 @@ export default function ProfileScreen() {
                         </ThemedText>
                       </View>
 
-                      {item.isResolved && (
+                      {Boolean(item.isResolved) ? (
                         <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
                           <MaterialIcons name="verified" size={14} color="#FFF" />
                           <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
                         </View>
-                      )}
+                      ) : null}
                     </View>
 
                     <ThemedText style={styles.textContent}>{item.content}</ThemedText>
@@ -269,10 +319,16 @@ const styles = StyleSheet.create({
     marginTop: 12,
     lineHeight: 22,
   },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
   stats: {
     flexDirection: 'row',
     gap: 32,
-    marginTop: 24,
+    marginTop: 20,
   },
   statItem: {
     alignItems: 'center',
@@ -281,12 +337,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 20,
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 20,
+  },
   editButton: {
-    marginTop: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
   },
   postsHeader: {
     padding: 16,

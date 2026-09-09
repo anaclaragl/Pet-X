@@ -28,6 +28,8 @@ export interface Post {
   userId: string;
   user: string;
   avatar: string;
+  city?: string;
+  state?: string;
   type: PostType;
   content: string;
   images?: string[];
@@ -48,7 +50,7 @@ interface PostsContextType {
   addPost: (content: string, type: PostType, images?: string[] | string | null) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string) => Promise<void>;
-  updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
+  updateUserProfile: (data: Partial<UserProfile>) => Promise<{ error: string | null; suggestion?: string }>;
   markAsResolved: (postId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   editPost: (postId: string, newContent: string) => Promise<void>;
@@ -60,6 +62,8 @@ const INITIAL_PROFILE: UserProfile = {
   username: '@anaclara',
   bio: 'Amante de animais, sempre ajudando a encontrar os pets perdidos do bairro! 🐶🐱',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+  city: 'São Paulo',
+  state: 'SP',
 };
 
 const INITIAL_POSTS: Post[] = [
@@ -68,6 +72,8 @@ const INITIAL_POSTS: Post[] = [
     userId: 'demo-user-1',
     user: 'Ana Clara',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+    city: 'São Paulo',
+    state: 'SP',
     type: 'perdido',
     content: 'Meu cachorro fugiu ontem perto da praça central. Ele atende por Rex e tem uma mancha no olho.',
     images: [
@@ -100,6 +106,8 @@ const INITIAL_POSTS: Post[] = [
     userId: 'demo-user-2',
     user: 'ONG Patinhas',
     avatar: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80',
+    city: 'São Paulo',
+    state: 'SP',
     type: 'ong',
     content: 'Estamos precisando de doação de ração para os filhotes que resgatamos essa semana!',
     images: [],
@@ -123,6 +131,8 @@ const INITIAL_POSTS: Post[] = [
     userId: 'demo-user-3',
     user: 'João Silva',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
+    city: 'Campinas',
+    state: 'SP',
     type: 'encontrado',
     content: 'Encontrei esse gatinho perto do mercado. É muito dócil, alguém perdeu?',
     images: [
@@ -143,7 +153,7 @@ const PostsContext = createContext<PostsContextType>({
   addPost: async () => {},
   toggleLike: async () => {},
   addComment: async () => {},
-  updateUserProfile: async () => {},
+  updateUserProfile: async () => ({ error: null }),
   markAsResolved: async () => {},
   deletePost: async () => {},
   editPost: async () => {},
@@ -176,6 +186,8 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
           userId: item.userId,
           user: item.user || 'Usuário',
           avatar: item.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+          city: item.city || '',
+          state: item.state || '',
           type: item.type as PostType,
           content: item.content,
           images: Array.isArray(item.images) ? item.images : [],
@@ -211,6 +223,8 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       userId: user?.id || 'demo-user-1',
       user: userProfile.name,
       avatar: userProfile.avatar,
+      city: userProfile.city,
+      state: userProfile.state,
       type,
       content,
       images: imagesList,
@@ -298,7 +312,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUserProfile = async (data: Partial<UserProfile>) => {
-    await updateAuthProfile({
+    return await updateAuthProfile({
       name: data.name,
       username: data.username,
       bio: data.bio,

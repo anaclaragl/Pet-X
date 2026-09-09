@@ -1,16 +1,19 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Image, TextInput, Pressable, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Image, TextInput, Pressable, FlatList, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useChat } from '@/context/ChatContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DesktopSidebar } from '@/components/desktop-sidebar';
 
 export default function ChatScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { conversations, sendMessage } = useChat();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
   const [text, setText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
@@ -28,11 +31,14 @@ export default function ChatScreen() {
   if (!conversation) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color={theme.text} />
-          </Pressable>
-          <ThemedText type="subtitle">Conversa não encontrada</ThemedText>
+        <DesktopSidebar currentTab="messages" />
+        <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
+          <View style={styles.header}>
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <MaterialIcons name="arrow-back" size={24} color={theme.text} />
+            </Pressable>
+            <ThemedText type="subtitle">Conversa não encontrada</ThemedText>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -40,22 +46,24 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.responsiveWrapper}>
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color={theme.text} />
-          </Pressable>
-          <Image source={{ uri: conversation.userAvatar }} style={styles.avatar} />
-          <View style={styles.headerInfo}>
-            <ThemedText style={styles.userName}>{conversation.userName}</ThemedText>
-            <ThemedText style={{ fontSize: 12, color: theme.textSecondary }}>Ativo recentemente</ThemedText>
+      <DesktopSidebar currentTab="messages" />
+      <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
+        <View style={styles.responsiveWrapper}>
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }} 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+          {/* Header */}
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <MaterialIcons name="arrow-back" size={24} color={theme.text} />
+            </Pressable>
+            <Image source={{ uri: conversation.userAvatar }} style={styles.avatar} />
+            <View style={styles.headerInfo}>
+              <ThemedText style={styles.userName}>{conversation.userName}</ThemedText>
+              <ThemedText style={{ fontSize: 12, color: theme.textSecondary }}>Ativo recentemente</ThemedText>
+            </View>
           </View>
-        </View>
 
         {/* Message History */}
         <FlatList
@@ -114,15 +122,20 @@ export default function ChatScreen() {
             <MaterialIcons name="send" size={20} color="#FFF" />
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </View>
-  </SafeAreaView>
-);
+        </KeyboardAvoidingView>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  mainArea: {
+    flex: 1,
+    width: '100%',
   },
   responsiveWrapper: {
     flex: 1,

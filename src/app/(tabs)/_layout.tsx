@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { useNotifications } from '@/context/NotificationsContext';
 import { usePosts } from '@/context/PostsContext';
+import { useChat } from '@/context/ChatContext';
 import { useTheme } from '@/hooks/use-theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, router } from 'expo-router';
@@ -16,8 +17,11 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
   const theme = useTheme();
   const { userProfile } = usePosts();
   const { unreadCount } = useNotifications();
+  const { conversations } = useChat();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
+
+  const unreadMessagesCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
   const routes = state.routes || [];
   const currentRouteName = routes[state.index]?.name;
@@ -70,6 +74,8 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
             } else if (route.name === 'messages') {
               iconName = 'mail-outline';
               label = 'Mensagens';
+              showBadge = unreadMessagesCount > 0;
+              badgeValue = unreadMessagesCount;
             }
 
             const onPress = () => {
@@ -215,10 +221,16 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
         }
 
         let iconName: keyof typeof MaterialIcons.glyphMap = 'home';
+        let showMobileBadge = false;
+        let mobileBadgeValue = 0;
+
         if (route.name === 'index') iconName = 'home';
         else if (route.name === 'explore') iconName = 'search';
-        else if (route.name === 'messages') iconName = 'mail-outline';
-        else if (route.name === 'profile') iconName = 'person-outline';
+        else if (route.name === 'messages') {
+          iconName = 'mail-outline';
+          showMobileBadge = unreadMessagesCount > 0;
+          mobileBadgeValue = unreadMessagesCount;
+        } else if (route.name === 'profile') iconName = 'person-outline';
 
         return (
           <Pressable
@@ -226,11 +238,20 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
             onPress={onPress}
             style={({ pressed }) => [styles.mobileNavItem, pressed && { opacity: 0.6 }]}
           >
-            <MaterialIcons
-              name={iconName}
-              size={26}
-              color={isFocused ? theme.brand : theme.textSecondary}
-            />
+            <View style={styles.mobileIconWrapper}>
+              <MaterialIcons
+                name={iconName}
+                size={26}
+                color={isFocused ? theme.brand : theme.textSecondary}
+              />
+              {showMobileBadge && (
+                <View style={[styles.mobileBadge, { backgroundColor: theme.brand }]}>
+                  <ThemedText style={styles.mobileBadgeText}>
+                    {mobileBadgeValue > 9 ? '9+' : mobileBadgeValue}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
           </Pressable>
         );
       })}
@@ -471,5 +492,26 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
     }),
+  },
+  mobileIconWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobileBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -7,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  mobileBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '700',
   },
 });

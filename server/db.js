@@ -105,6 +105,13 @@ async function executeJsonQuery(text, params = []) {
     return { rows: profile ? [profile] : [] };
   }
 
+  // 6.1. SELECT id, user_id FROM profiles WHERE username = $1 or LOWER(username) = LOWER($1)
+  if (sql.includes('FROM profiles WHERE') && sql.toLowerCase().includes('username')) {
+    const target = (params[0] || '').toLowerCase();
+    const profile = dbData.profiles.find(p => (p.username || '').toLowerCase() === target);
+    return { rows: profile ? [{ id: profile.id, user_id: profile.user_id }] : [] };
+  }
+
   // 7. UPDATE profiles SET name = COALESCE($1, name) ...
   if (sql.includes('UPDATE profiles SET')) {
     const userId = params[6];
@@ -123,8 +130,16 @@ async function executeJsonQuery(text, params = []) {
 
   // 8. SELECT p.id, p.user_id, p.type, p.content, p.likes_count, p.is_resolved, p.created_at ... FROM posts
   if (sql.includes('FROM posts p')) {
-    const currentUserId = params[0];
-    const rows = dbData.posts.map(p => {
+    const isUserFilter = sql.includes('WHERE p.user_id = $1');
+    const targetUserId = isUserFilter ? params[0] : null;
+    const currentUserId = isUserFilter ? params[1] : params[0];
+
+    let postList = dbData.posts;
+    if (isUserFilter) {
+      postList = postList.filter(p => p.user_id === targetUserId);
+    }
+
+    const rows = postList.map(p => {
       const profile = dbData.profiles.find(pr => pr.user_id === p.user_id) || {};
       const images = dbData.post_images.filter(pi => pi.post_id === p.id).map(pi => pi.image_url);
 
@@ -132,6 +147,7 @@ async function executeJsonQuery(text, params = []) {
         const c_pr = dbData.profiles.find(pr => pr.user_id === c.user_id) || {};
         return {
           id: c.id,
+          userId: c.user_id,
           content: c.content,
           time: c.created_at,
           user: c_pr.name || 'Usuário',
@@ -151,6 +167,8 @@ async function executeJsonQuery(text, params = []) {
         created_at: p.created_at,
         user_name: profile.name,
         avatar: profile.avatar_url,
+        user_city: profile.city || '',
+        user_state: profile.state || '',
         images,
         comments,
         is_liked: isLiked

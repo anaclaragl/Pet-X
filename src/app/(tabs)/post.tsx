@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, TextInput, Pressable, View, Image, ScrollView } from 'react-native';
+import { StyleSheet, TextInput, Pressable, View, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/themed-text';
@@ -15,6 +15,7 @@ export default function CreatePostScreen() {
   const [tag, setTag] = useState<PostType>('outro');
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tags: Array<{ id: PostType; label: string; color: string }> = [
     { id: 'perdido', label: 'Perdido', color: theme.lost },
@@ -60,12 +61,17 @@ export default function CreatePostScreen() {
     setImageUris(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  const handlePost = () => {
-    if (!content.trim() && imageUris.length === 0) return;
-    addPost(content.trim(), tag, imageUris);
-    setContent('');
-    setImageUris([]);
-    router.replace('/(tabs)');
+  const handlePost = async () => {
+    if ((!content.trim() && imageUris.length === 0) || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await addPost(content.trim(), tag, imageUris);
+      setContent('');
+      setImageUris([]);
+      router.replace('/(tabs)');
+    } catch (e) {
+      setIsSubmitting(false);
+    }
   };
 
   const selectedTag = tags.find(t => t.id === tag) || tags[3];
@@ -74,16 +80,23 @@ export default function CreatePostScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.responsiveWrapper}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Pressable onPress={() => router.back()} style={styles.closeButton}>
+          <Pressable onPress={() => router.back()} style={styles.closeButton} disabled={isSubmitting}>
             <MaterialIcons name="close" size={24} color={theme.text} />
           </Pressable>
           <ThemedText type="title" style={{ fontSize: 20 }}>Novo Post</ThemedText>
           <Pressable 
-            style={[styles.postButton, { backgroundColor: theme.brand, opacity: (content.trim() || imageUris.length > 0) ? 1 : 0.5 }]} 
+            style={[
+              styles.postButton, 
+              { backgroundColor: theme.brand, opacity: ((content.trim() || imageUris.length > 0) && !isSubmitting) ? 1 : 0.5 }
+            ]} 
             onPress={handlePost}
-            disabled={!content.trim() && imageUris.length === 0}
+            disabled={(!content.trim() && imageUris.length === 0) || isSubmitting}
           >
-            <ThemedText style={styles.postButtonText}>Postar</ThemedText>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <ThemedText style={styles.postButtonText}>Postar</ThemedText>
+            )}
           </Pressable>
         </View>
 

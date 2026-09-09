@@ -31,6 +31,7 @@ function RootLayoutNav() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="chat/[id]" />
             <Stack.Screen name="post/[id]" />
+            <Stack.Screen name="profile/[id]" />
             <Stack.Screen name="notifications" />
           </Stack.Protected>
 

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { StyleSheet, FlatList, View, Image, Pressable, ScrollView } from 'react-native';
+import { StyleSheet, FlatList, View, Image, Pressable, ScrollView, Share, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Post, usePosts } from '@/context/PostsContext';
+import { useAuth } from '@/context/AuthContext';
 import { useChat } from '@/context/ChatContext';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function FeedScreen() {
   const theme = useTheme();
+  const { user: currentUser } = useAuth();
   const { posts, toggleLike, markAsResolved, deletePost, editPost, userProfile } = usePosts();
   const { startOrOpenChat } = useChat();
 
@@ -32,6 +34,17 @@ export default function FeedScreen() {
     setModalImages(images);
     setModalInitialIndex(index);
     setModalVisible(true);
+  };
+
+  const handleShare = async (post: Post) => {
+    try {
+      await Share.share({
+        title: `Pet-X: ${getTagLabel(post.type)} - ${post.user}`,
+        message: `🐾 [Pet-X] ${getTagLabel(post.type).toUpperCase()}: ${post.content}\nPublicado por ${post.user}`,
+      });
+    } catch (err) {
+      // Silencioso
+    }
   };
 
   const getTagColor = (type: string) => {
@@ -67,47 +80,90 @@ export default function FeedScreen() {
               ? item.images 
               : (item.image ? [item.image] : []);
 
+            const isPostOwner = item.userId === currentUser?.id;
+
             return (
               <View style={[styles.postContainer, { borderBottomColor: theme.border }]}>
-                <Image source={{ uri: item.avatar }} style={styles.avatar} resizeMode="cover" />
-                <View style={styles.postContent}>
-                  <View style={styles.postHeader}>
-                    <View style={styles.postUserInfo}>
-                      <ThemedText style={styles.userName}>{item.user}</ThemedText>
-                      <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
-                    </View>
+                {/* Avatar clicável que abre o perfil do usuário */}
+                <Pressable
+                  style={({ pressed }) => [pressed && { opacity: 0.8 }]}
+                  onPress={() => {
+                    if (isPostOwner) {
+                      router.push('/(tabs)/profile' as any);
+                    } else {
+                      router.push(`/profile/${item.userId}` as any);
+                    }
+                  }}
+                >
+                  <Image source={{ uri: item.avatar }} style={styles.avatar} resizeMode="cover" />
+                </Pressable>
 
+                <View style={styles.postContent}>
+                  {/* Header do Post */}
+                  <View style={styles.postHeader}>
                     <Pressable
-                      style={({ pressed, hovered }: any) => [
-                        styles.moreBtn,
-                        hovered && { backgroundColor: theme.backgroundElement },
-                        pressed && { opacity: 0.7 },
-                      ]}
+                      style={({ pressed }) => [styles.postUserInfo, pressed && { opacity: 0.7 }]}
                       onPress={() => {
-                        setOptionsPost(item);
-                        setOptionsVisible(true);
+                        if (isPostOwner) {
+                          router.push('/(tabs)/profile' as any);
+                        } else {
+                          router.push(`/profile/${item.userId}` as any);
+                        }
                       }}
                     >
-                      <MaterialIcons name="more-horiz" size={20} color={theme.textSecondary} />
+                      <ThemedText style={styles.userName}>{item.user}</ThemedText>
+                      <ThemedText style={{ color: theme.textSecondary, marginLeft: 4 }}>· {item.time}</ThemedText>
                     </Pressable>
-                  </View>
-                  
-                  <View style={styles.badgesRow}>
-                    <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
-                      <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
-                        {getTagLabel(item.type)}
-                      </ThemedText>
-                    </View>
 
-                    {item.isResolved && (
-                      <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
-                        <MaterialIcons name="verified" size={14} color="#FFF" />
-                        <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
-                      </View>
+                    {/* Botão de 3 pontos EXCLUSIVO para o autor da publicação */}
+                    {isPostOwner && (
+                      <Pressable
+                        style={({ pressed, hovered }: any) => [
+                          styles.moreBtn,
+                          hovered && { backgroundColor: theme.backgroundElement },
+                          pressed && { opacity: 0.7 },
+                        ]}
+                        onPress={() => {
+                          setOptionsPost(item);
+                          setOptionsVisible(true);
+                        }}
+                      >
+                        <MaterialIcons name="more-horiz" size={20} color={theme.textSecondary} />
+                      </Pressable>
                     )}
                   </View>
+                  
+                  {/* Corpo clicável que abre a tela de detalhes do post */}
+                  <Pressable
+                    style={({ pressed }) => [pressed && { opacity: 0.95 }]}
+                    onPress={() => router.push(`/post/${item.id}` as any)}
+                  >
+                    <View style={styles.badgesRow}>
+                      <View style={[styles.tagBadge, { backgroundColor: getTagColor(item.type) }]}>
+                        <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>
+                          {getTagLabel(item.type)}
+                        </ThemedText>
+                      </View>
 
-                  <ThemedText style={styles.textContent}>{item.content}</ThemedText>
+                      {Boolean(item.city || item.state) ? (
+                        <View style={[styles.locationBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                          <MaterialIcons name="location-on" size={13} color={theme.textSecondary} />
+                          <ThemedText style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>
+                            {[item.city, item.state].filter(Boolean).join(', ')}
+                          </ThemedText>
+                        </View>
+                      ) : null}
+
+                      {Boolean(item.isResolved) ? (
+                        <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
+                          <MaterialIcons name="verified" size={14} color="#FFF" />
+                          <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <ThemedText style={styles.textContent}>{item.content}</ThemedText>
+                  </Pressable>
 
                   {/* Photos Gallery */}
                   {postImages.length === 1 && (
@@ -154,6 +210,7 @@ export default function FeedScreen() {
                     commentsCount={item.commentsCount}
                     onLike={() => toggleLike(item.id)}
                     onComment={() => router.push(`/post/${item.id}` as any)}
+                    onShare={() => handleShare(item)}
                   />
                 </View>
               </View>
@@ -253,6 +310,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
   },
   resolvedBadge: {
     flexDirection: 'row',

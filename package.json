@@ -39,6 +39,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "dev": "expo start --web",
     "server": "cd server && node index.js",
     "db:init": "cd server && node init-db.js",
     "reset-project": "node ./scripts/reset-project.js",

@@ -35,7 +35,11 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.error || `Erro ${response.status} ao comunicar com o servidor PostgreSQL`);
+    const error: any = new Error(data?.error || `Erro ${response.status} ao comunicar com o servidor PostgreSQL`);
+    error.status = response.status;
+    error.data = data;
+    error.suggestion = data?.suggestion;
+    throw error;
   }
 
   return data as T;
