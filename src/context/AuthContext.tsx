@@ -66,22 +66,10 @@ export function isTokenValid(token: string | null | undefined): boolean {
   }
 }
 
-const DEFAULT_PROFILE: UserProfileData = {
-  id: 'demo-user-1',
-  name: 'Ana Clara',
-  username: '@anaclara',
-  accountType: 'tutor',
-  bio: 'Amante de animais, sempre ajudando a encontrar os pets perdidos do bairro! 🐶🐱',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-  city: 'São Paulo',
-  state: 'SP',
-  isVerified: false,
-};
-
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
-  profile: DEFAULT_PROFILE,
+  profile: null,
   isLoading: true,
   isAuthenticated: false,
   isConfigured: isPostgresApiConfigured,
@@ -94,7 +82,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [session, setSession] = useState<{ token: string } | null>(null);
-  const [profile, setProfile] = useState<UserProfileData | null>(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -117,18 +105,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   username: res.profile.username,
                   accountType: res.profile.account_type || 'tutor',
                   bio: res.profile.bio || '',
-                  avatarUrl: res.profile.avatar_url || DEFAULT_PROFILE.avatarUrl,
-                  city: res.profile.city || 'São Paulo',
-                  state: res.profile.state || 'SP',
+                  avatarUrl: res.profile.avatar_url || '',
+                  city: res.profile.city || '',
+                  state: res.profile.state || '',
                   isVerified: res.profile.account_type === 'ong',
                 });
               }
             }
           } catch (fetchError) {
-            // Backend offline but token is valid locally
+            // Backend offline ou erro de sincronização
           }
         } else {
-          // Token expired or invalid
+          // Token expirado ou inexistente
           if (storedToken) {
             await AsyncStorage.removeItem('petx_token');
           }
@@ -139,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         setSession(null);
         setUser(null);
+        setProfile(null);
       } finally {
         setIsLoading(false);
       }
@@ -166,33 +155,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: res.profile.username,
             accountType: res.profile.account_type || accountType,
             bio: res.profile.bio || '',
-            avatarUrl: res.profile.avatar_url || DEFAULT_PROFILE.avatarUrl,
-            city: city || 'São Paulo',
-            state: state || 'SP',
+            avatarUrl: res.profile.avatar_url || '',
+            city: city || res.profile.city || '',
+            state: state || res.profile.state || '',
             isVerified: accountType === 'ong',
           });
         }
         return { error: null };
       }
+      return { error: 'Não foi possível completar o cadastro.' };
     } catch (err: any) {
-      // Demo fallback if backend is offline
-      const mockProfile: UserProfileData = {
-        id: Date.now().toString(),
-        name,
-        username: '@' + name.toLowerCase().replace(/\s+/g, ''),
-        accountType,
-        city: city || 'São Paulo',
-        state: state || 'SP',
-        bio: accountType === 'ong' ? 'ONG focada em proteção animal e resgate.' : 'Tutor e amante de pets.',
-        avatarUrl: accountType === 'ong'
-          ? 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80'
-          : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-        isVerified: accountType === 'ong',
-      };
-      setProfile(mockProfile);
-      return { error: null };
+      return { error: err?.message || 'Erro ao realizar cadastro.' };
     }
-    return { error: null };
   };
 
   const signIn = async ({ email, password = '' }: SignInParams) => {
@@ -213,18 +187,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: res.profile.username,
             accountType: res.profile.account_type || 'tutor',
             bio: res.profile.bio || '',
-            avatarUrl: res.profile.avatar_url || DEFAULT_PROFILE.avatarUrl,
-            city: res.profile.city || 'São Paulo',
-            state: res.profile.state || 'SP',
+            avatarUrl: res.profile.avatar_url || '',
+            city: res.profile.city || '',
+            state: res.profile.state || '',
             isVerified: res.profile.account_type === 'ong',
           });
         }
         return { error: null };
       }
+      return { error: 'Não foi possível autenticar o usuário.' };
     } catch (err: any) {
       return { error: err?.message || 'Erro ao realizar login.' };
     }
-    return { error: null };
   };
 
   const signOut = async () => {
@@ -233,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) { }
     setUser(null);
     setSession(null);
-    setProfile(DEFAULT_PROFILE);
+    setProfile(null);
   };
 
   const updateProfile = async (data: Partial<UserProfileData>): Promise<{ error: string | null; suggestion?: string }> => {

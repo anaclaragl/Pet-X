@@ -27,57 +27,6 @@ interface ChatContextType {
   refreshConversations: () => Promise<void>;
 }
 
-const INITIAL_CONVERSATIONS: Conversation[] = [
-  {
-    id: '1',
-    userName: 'João Silva',
-    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
-    lastMessage: 'Acho que vi um cachorrinho com a mesma mancha perto da praça às 14h!',
-    lastTime: '14:32',
-    unreadCount: 1,
-    messages: [
-      {
-        id: 'm1',
-        sender: 'João Silva',
-        text: 'Oi Ana, vi seu post sobre o pet!',
-        timestamp: '14:30',
-        isUser: false,
-      },
-      {
-        id: 'm2',
-        sender: 'Ana Clara',
-        text: 'Oi João! Você viu o Rex por aí?',
-        timestamp: '14:31',
-        isUser: true,
-      },
-      {
-        id: 'm3',
-        sender: 'João Silva',
-        text: 'Acho que vi um cachorrinho com a mesma mancha perto da praça às 14h!',
-        timestamp: '14:32',
-        isUser: false,
-      },
-    ],
-  },
-  {
-    id: '2',
-    userName: 'ONG Patinhas',
-    userAvatar: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80',
-    lastMessage: 'Olá Ana! Obrigado por apoiar nossa campanha de ração!',
-    lastTime: 'Ontem',
-    unreadCount: 0,
-    messages: [
-      {
-        id: 'm4',
-        sender: 'ONG Patinhas',
-        text: 'Olá Ana! Obrigado por apoiar nossa campanha de ração!',
-        timestamp: 'Ontem',
-        isUser: false,
-      },
-    ],
-  },
-];
-
 const ChatContext = createContext<ChatContextType>({
   conversations: [],
   sendMessage: async () => {},
@@ -96,30 +45,37 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const convs = await apiFetch<any[]>('/api/conversations');
-      const conversationsWithMessages = await Promise.all(
-        convs.map(async (conv) => {
-          try {
-            const messages = await apiFetch<ChatMessage[]>(`/api/conversations/${conv.id}/messages`);
-            return {
-              ...conv,
-              messages,
-            };
-          } catch (e) {
-            return {
-              ...conv,
-              messages: [],
-            };
-          }
-        })
-      );
-      setConversations(conversationsWithMessages);
+      if (Array.isArray(convs)) {
+        const conversationsWithMessages = await Promise.all(
+          convs.map(async (conv) => {
+            try {
+              const messages = await apiFetch<ChatMessage[]>(`/api/conversations/${conv.id}/messages`);
+              return {
+                ...conv,
+                messages: Array.isArray(messages) ? messages : [],
+              };
+            } catch (e) {
+              return {
+                ...conv,
+                messages: [],
+              };
+            }
+          })
+        );
+        setConversations(conversationsWithMessages);
+      } else {
+        setConversations([]);
+      }
     } catch (err) {
-      // Fallback para mock local se o servidor estiver inacessível
-      setConversations(INITIAL_CONVERSATIONS);
+      setConversations([]);
     }
   };
 
   useEffect(() => {
+    if (!user) {
+      setConversations([]);
+      return;
+    }
     fetchConversations();
     const interval = setInterval(fetchConversations, 5000); // Polling a cada 5s
     return () => clearInterval(interval);

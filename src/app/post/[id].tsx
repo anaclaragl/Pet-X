@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useChat } from '@/context/ChatContext';
 import { usePosts } from '@/context/PostsContext';
 import { useTheme } from '@/hooks/use-theme';
+import { formatDistance } from '@/services/location';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -37,7 +38,7 @@ export default function PostDetailsScreen() {
   if (!post) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <DesktopSidebar />
+        <DesktopSidebar currentTab="index" />
         <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
           <View style={styles.responsiveWrapper}>
             <View style={[styles.header, { borderBottomColor: theme.border }]}>
@@ -118,7 +119,7 @@ export default function PostDetailsScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <DesktopSidebar />
+      <DesktopSidebar currentTab="index" />
       <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
         <View style={styles.responsiveWrapper}>
           <KeyboardAvoidingView
@@ -195,12 +196,29 @@ export default function PostDetailsScreen() {
                     </ThemedText>
                   </View>
 
-                  {Boolean(post.city || post.state) ? (
+                  {/* Distance Badge */}
+                  {formatDistance(post.distanceKm) ? (
+                    <View style={[styles.distanceBadge, { backgroundColor: 'rgba(255, 107, 74, 0.12)', borderColor: theme.brand }]}>
+                      <MaterialIcons name="near-me" size={12} color={theme.brand} />
+                      <ThemedText style={{ color: theme.brand, fontSize: 11, fontWeight: '700' }}>
+                        {formatDistance(post.distanceKm)}
+                      </ThemedText>
+                    </View>
+                  ) : null}
+
+                  {Boolean(post.city || post.state || post.neighborhood) ? (
                     <View style={[styles.locationBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
                       <MaterialIcons name="location-on" size={13} color={theme.textSecondary} />
                       <ThemedText style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>
-                        {[post.city, post.state].filter(Boolean).join(', ')}
+                        {[post.neighborhood, post.city, post.state].filter(Boolean).join(', ')} {post.isApproximate ? '(Aproximado)' : ''}
                       </ThemedText>
+                    </View>
+                  ) : null}
+
+                  {Boolean(post.isResolved) ? (
+                    <View style={[styles.resolvedBadge, { backgroundColor: '#00BA7C' }]}>
+                      <MaterialIcons name="verified" size={14} color="#FFF" />
+                      <ThemedText style={styles.resolvedBadgeText}>ENCONTRADO 🎉</ThemedText>
                     </View>
                   ) : null}
                 </View>
@@ -424,6 +442,38 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
+  },
+  resolvedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  resolvedBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
   postContentText: {
     fontSize: 17,
     lineHeight: 24,
@@ -540,29 +590,6 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: { cursor: 'pointer' },
     }),
-  },
-  locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 3,
-  },
-  resolvedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  resolvedBadgeText: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.2,
   },
   authorProfileLink: {
     flex: 1,

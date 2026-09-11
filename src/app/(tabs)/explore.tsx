@@ -11,17 +11,29 @@ import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
 import { PostOptionsMenuModal } from '@/components/post-options-modal';
 import { EditPostModal } from '@/components/edit-post-modal';
+import { LocationModal } from '@/components/location-modal';
+import { formatDistance } from '@/services/location';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SearchScreen() {
   const theme = useTheme();
   const { user: currentUser } = useAuth();
-  const { posts, toggleLike, markAsResolved, deletePost, editPost } = usePosts();
+  const { 
+    posts, 
+    toggleLike, 
+    markAsResolved, 
+    deletePost, 
+    editPost,
+    activeLocation,
+    searchRadius,
+    setSearchRadius,
+  } = usePosts();
   const { startOrOpenChat } = useChat();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'todos' | 'perdido' | 'encontrado' | 'ong'>('todos');
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImages, setModalImages] = useState<string[]>([]);
@@ -57,6 +69,14 @@ export default function SearchScreen() {
     { id: 'ong', label: 'ONGs', color: theme.ngo },
   ] as const;
 
+  const radiusFilters = [
+    { label: 'Todas as regiões', value: null },
+    { label: '5 km', value: 5 },
+    { label: '15 km', value: 15 },
+    { label: '30 km', value: 30 },
+    { label: '50 km', value: 50 },
+  ];
+
   const filteredPosts = posts.filter((post) => {
     const matchesCategory = selectedCategory === 'todos' || post.type === selectedCategory;
     const query = searchQuery.trim().toLowerCase();
@@ -64,6 +84,7 @@ export default function SearchScreen() {
       post.content.toLowerCase().includes(query) ||
       post.user.toLowerCase().includes(query) ||
       post.type.toLowerCase().includes(query) ||
+      (post.neighborhood && post.neighborhood.toLowerCase().includes(query)) ||
       (post.city && post.city.toLowerCase().includes(query)) ||
       (post.state && post.state.toLowerCase().includes(query));
 
@@ -92,22 +113,38 @@ export default function SearchScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.responsiveWrapper}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <View style={[styles.searchBar, { backgroundColor: theme.backgroundElement }]}>
-            <MaterialIcons name="search" size={24} color={theme.textSecondary} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Buscar por pet, usuário, cidade ou palavra..."
-              placeholderTextColor={theme.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <MaterialIcons name="close" size={20} color={theme.textSecondary} />
-              </Pressable>
-            )}
+          {/* Search Bar + Location shortcut */}
+          <View style={styles.searchBarRow}>
+            <View style={[styles.searchBar, { backgroundColor: theme.backgroundElement }]}>
+              <MaterialIcons name="search" size={22} color={theme.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.text }]}
+                placeholder="Buscar por pet, cidade, bairro ou palavra..."
+                placeholderTextColor={theme.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')}>
+                  <MaterialIcons name="close" size={18} color={theme.textSecondary} />
+                </Pressable>
+              )}
+            </View>
+
+            <Pressable
+              style={({ pressed, hovered }: any) => [
+                styles.locationFilterBtn,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+                hovered && { borderColor: theme.brand },
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => setLocationModalVisible(true)}
+            >
+              <MaterialIcons name="location-on" size={20} color={theme.brand} />
+            </Pressable>
           </View>
 
+          {/* Category Chips */}
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false} 
@@ -138,6 +175,42 @@ export default function SearchScreen() {
               );
             })}
           </ScrollView>
+
+          {/* Radius Filter Chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.radiusChipsContainer}
+          >
+            {radiusFilters.map((rf) => {
+              const isSelected = searchRadius === rf.value;
+              return (
+                <Pressable
+                  key={rf.label}
+                  onPress={() => setSearchRadius(rf.value)}
+                  style={({ pressed, hovered }: any) => [
+                    styles.radiusFilterChip,
+                    {
+                      backgroundColor: isSelected ? 'rgba(255, 107, 74, 0.15)' : 'transparent',
+                      borderColor: isSelected ? theme.brand : theme.border,
+                    },
+                    hovered && !isSelected && { backgroundColor: theme.backgroundElement },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <ThemedText
+                    style={{
+                      color: isSelected ? theme.brand : theme.textSecondary,
+                      fontSize: 12,
+                      fontWeight: isSelected ? '700' : '500',
+                    }}
+                  >
+                    {rf.label}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {filteredPosts.length === 0 ? (
@@ -157,6 +230,14 @@ export default function SearchScreen() {
                 : (item.image ? [item.image] : []);
               
               const isPostOwner = item.userId === currentUser?.id;
+              const distanceText = formatDistance(item.distanceKm);
+
+              const displayLocationParts = [
+                item.neighborhood,
+                item.city,
+                item.state,
+              ].filter(Boolean);
+              const locationText = displayLocationParts.join(', ');
 
               return (
                 <View style={[styles.postContainer, { borderBottomColor: theme.border }]}>
@@ -201,11 +282,22 @@ export default function SearchScreen() {
                           </ThemedText>
                         </View>
 
-                        {Boolean(item.city || item.state) ? (
+                        {/* Distance Badge */}
+                        {distanceText ? (
+                          <View style={[styles.distanceBadge, { backgroundColor: 'rgba(255, 107, 74, 0.12)', borderColor: theme.brand }]}>
+                            <MaterialIcons name="near-me" size={12} color={theme.brand} />
+                            <ThemedText style={{ color: theme.brand, fontSize: 11, fontWeight: '700' }}>
+                              {distanceText}
+                            </ThemedText>
+                          </View>
+                        ) : null}
+
+                        {/* Location Name */}
+                        {locationText ? (
                           <View style={[styles.locationBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
                             <MaterialIcons name="location-on" size={13} color={theme.textSecondary} />
-                            <ThemedText style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>
-                              {[item.city, item.state].filter(Boolean).join(', ')}
+                            <ThemedText style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
+                              {locationText} {item.isApproximate ? '(Aprox.)' : ''}
                             </ThemedText>
                           </View>
                         ) : null}
@@ -275,6 +367,11 @@ export default function SearchScreen() {
           />
         )}
 
+        <LocationModal
+          visible={locationModalVisible}
+          onClose={() => setLocationModalVisible(false)}
+        />
+
         <ImageViewerModal
           visible={modalVisible}
           images={modalImages}
@@ -319,23 +416,54 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
   },
+  searchBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   searchBar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     borderRadius: 24,
     height: 44,
   },
+  locationFilterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
   searchInput: {
     flex: 1,
     marginLeft: 8,
-    fontSize: 16,
+    fontSize: 15,
     height: '100%',
   },
   categoryContainer: {
     flexDirection: 'row',
     gap: 8,
     marginTop: 12,
+  },
+  radiusChipsContainer: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+  },
+  radiusFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
   },
   chip: {
     paddingHorizontal: 16,
@@ -393,6 +521,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
+  },
   badgesRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -408,6 +545,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 3,
+    maxWidth: 240,
   },
   resolvedBadge: {
     flexDirection: 'row',

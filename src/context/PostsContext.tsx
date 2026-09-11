@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, uploadImageToPostgres } from '@/lib/api';
+import { getCurrentCoordinates, reverseGeocode, calculateDistanceKm } from '@/services/location';
 
 export type PostType = 'perdido' | 'encontrado' | 'ong' | 'outro';
 
@@ -19,8 +20,21 @@ export interface UserProfile {
   avatar: string;
   city?: string;
   state?: string;
+  neighborhood?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  hideExactLocation?: boolean;
   accountType?: string;
   isVerified?: boolean;
+}
+
+export interface PostLocation {
+  latitude?: number | null;
+  longitude?: number | null;
+  city?: string;
+  state?: string;
+  neighborhood?: string;
+  isApproximate?: boolean;
 }
 
 export interface Post {
@@ -30,6 +44,11 @@ export interface Post {
   avatar: string;
   city?: string;
   state?: string;
+  neighborhood?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  isApproximate?: boolean;
+  distanceKm?: number | null;
   type: PostType;
   content: string;
   images?: string[];
@@ -43,11 +62,31 @@ export interface Post {
   isResolved?: boolean;
 }
 
+export interface ActiveLocation {
+  latitude?: number | null;
+  longitude?: number | null;
+  city?: string;
+  state?: string;
+  neighborhood?: string;
+  label: string;
+  isGps?: boolean;
+}
+
 interface PostsContextType {
   posts: Post[];
   userPosts: Post[];
   userProfile: UserProfile;
-  addPost: (content: string, type: PostType, images?: string[] | string | null) => Promise<void>;
+  activeLocation: ActiveLocation | null;
+  searchRadius: number | null;
+  setActiveLocation: (loc: ActiveLocation | null) => void;
+  setSearchRadius: (radius: number | null) => void;
+  requestCurrentLocation: () => Promise<boolean>;
+  addPost: (
+    content: string, 
+    type: PostType, 
+    images?: string[] | string | null, 
+    locationData?: Partial<PostLocation>
+  ) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string) => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<{ error: string | null; suggestion?: string }>;
@@ -57,99 +96,24 @@ interface PostsContextType {
   refreshPosts: () => Promise<void>;
 }
 
-const INITIAL_PROFILE: UserProfile = {
-  name: 'Ana Clara',
-  username: '@anaclara',
-  bio: 'Amante de animais, sempre ajudando a encontrar os pets perdidos do bairro! 🐶🐱',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-  city: 'São Paulo',
-  state: 'SP',
+const EMPTY_PROFILE: UserProfile = {
+  name: '',
+  username: '',
+  bio: '',
+  avatar: '',
+  city: '',
+  state: '',
 };
-
-const INITIAL_POSTS: Post[] = [
-  {
-    id: '1',
-    userId: 'demo-user-1',
-    user: 'Ana Clara',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-    city: 'São Paulo',
-    state: 'SP',
-    type: 'perdido',
-    content: 'Meu cachorro fugiu ontem perto da praça central. Ele atende por Rex e tem uma mancha no olho.',
-    images: [
-      'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&q=80',
-      'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80',
-    ],
-    time: '2h',
-    likesCount: 12,
-    isLiked: false,
-    commentsCount: 2,
-    comments: [
-      {
-        id: 'c1',
-        user: 'João Silva',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
-        content: 'Acho que vi um cachorrinho muito parecido perto da padaria hoje cedo!',
-        time: '1h',
-      },
-      {
-        id: 'c2',
-        user: 'ONG Patinhas',
-        avatar: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80',
-        content: 'Compartilhamos no nosso grupo de resgate!',
-        time: '45m',
-      },
-    ],
-  },
-  {
-    id: '2',
-    userId: 'demo-user-2',
-    user: 'ONG Patinhas',
-    avatar: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80',
-    city: 'São Paulo',
-    state: 'SP',
-    type: 'ong',
-    content: 'Estamos precisando de doação de ração para os filhotes que resgatamos essa semana!',
-    images: [],
-    time: '4h',
-    likesCount: 34,
-    isLiked: true,
-    commentsCount: 1,
-    isVerified: true,
-    comments: [
-      {
-        id: 'c3',
-        user: 'Ana Clara',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-        content: 'Posso levar 2 sacos amanhã de manhã!',
-        time: '2h',
-      },
-    ],
-  },
-  {
-    id: '3',
-    userId: 'demo-user-3',
-    user: 'João Silva',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
-    city: 'Campinas',
-    state: 'SP',
-    type: 'encontrado',
-    content: 'Encontrei esse gatinho perto do mercado. É muito dócil, alguém perdeu?',
-    images: [
-      'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800&q=80',
-    ],
-    time: '5h',
-    likesCount: 8,
-    isLiked: false,
-    commentsCount: 0,
-    comments: [],
-  },
-];
 
 const PostsContext = createContext<PostsContextType>({
   posts: [],
   userPosts: [],
-  userProfile: INITIAL_PROFILE,
+  userProfile: EMPTY_PROFILE,
+  activeLocation: null,
+  searchRadius: null,
+  setActiveLocation: () => {},
+  setSearchRadius: () => {},
+  requestCurrentLocation: async () => false,
   addPost: async () => {},
   toggleLike: async () => {},
   addComment: async () => {},
@@ -162,32 +126,82 @@ const PostsContext = createContext<PostsContextType>({
 
 export function PostsProvider({ children }: { children: React.ReactNode }) {
   const { profile: authProfile, user, updateProfile: updateAuthProfile } = useAuth();
-  const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  const [activeLocation, setActiveLocationState] = useState<ActiveLocation | null>(null);
+  const [searchRadius, setSearchRadiusState] = useState<number | null>(null);
 
   const userProfile: UserProfile = authProfile
     ? {
         name: authProfile.name,
         username: authProfile.username,
         bio: authProfile.bio || '',
-        avatar: authProfile.avatarUrl || INITIAL_PROFILE.avatar,
-        city: authProfile.city,
-        state: authProfile.state,
+        avatar: authProfile.avatarUrl || '',
+        city: authProfile.city || '',
+        state: authProfile.state || '',
+        neighborhood: (authProfile as any).neighborhood || '',
+        latitude: (authProfile as any).latitude || null,
+        longitude: (authProfile as any).longitude || null,
+        hideExactLocation: (authProfile as any).hide_exact_location || false,
         accountType: authProfile.accountType,
         isVerified: authProfile.isVerified,
       }
-    : INITIAL_PROFILE;
+    : EMPTY_PROFILE;
 
-  const fetchAllPosts = async () => {
+  // Atualiza a localização inicial caso o perfil do usuário possua cidade cadastrada
+  useEffect(() => {
+    if (authProfile?.city && (!activeLocation || !activeLocation.isGps)) {
+      setActiveLocationState({
+        city: authProfile.city,
+        state: authProfile.state || '',
+        neighborhood: (authProfile as any).neighborhood || '',
+        latitude: (authProfile as any).latitude || null,
+        longitude: (authProfile as any).longitude || null,
+        label: `${authProfile.city}${authProfile.state ? `, ${authProfile.state}` : ''}`,
+        isGps: false,
+      });
+    }
+  }, [authProfile?.city, authProfile?.state]);
+
+  const fetchAllPosts = async (customLoc?: ActiveLocation | null, customRadius?: number | null) => {
+    const loc = customLoc !== undefined ? customLoc : activeLocation;
+    const radius = customRadius !== undefined ? customRadius : searchRadius;
+
     try {
-      const serverPosts = await apiFetch<any[]>('/api/posts');
-      if (serverPosts && Array.isArray(serverPosts) && serverPosts.length > 0) {
+      let url = '/api/posts';
+      const params = new URLSearchParams();
+
+      if (loc?.latitude && loc?.longitude && radius) {
+        params.append('lat', loc.latitude.toString());
+        params.append('lng', loc.longitude.toString());
+        params.append('radius_km', radius.toString());
+      } else if (loc?.latitude && loc?.longitude) {
+        params.append('lat', loc.latitude.toString());
+        params.append('lng', loc.longitude.toString());
+      } else if (loc?.city) {
+        params.append('city', loc.city);
+        if (loc.state) params.append('state', loc.state);
+      }
+
+      const queryString = params.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+
+      const serverPosts = await apiFetch<any[]>(url);
+      if (serverPosts && Array.isArray(serverPosts)) {
         const formatted: Post[] = serverPosts.map((item) => ({
           id: item.id,
           userId: item.userId,
           user: item.user || 'Usuário',
-          avatar: item.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+          avatar: item.avatar || '',
           city: item.city || '',
           state: item.state || '',
+          neighborhood: item.neighborhood || '',
+          latitude: item.latitude !== null && item.latitude !== undefined ? Number(item.latitude) : null,
+          longitude: item.longitude !== null && item.longitude !== undefined ? Number(item.longitude) : null,
+          isApproximate: Boolean(item.isApproximate),
+          distanceKm: item.distanceKm !== null && item.distanceKm !== undefined ? Number(item.distanceKm) : null,
           type: item.type as PostType,
           content: item.content,
           images: Array.isArray(item.images) ? item.images : [],
@@ -200,17 +214,65 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
           isResolved: item.isResolved || false,
         }));
         setPosts(formatted);
+      } else {
+        setPosts([]);
       }
     } catch (err) {
-      // Backend server offline - keep initial posts
+      setPosts([]);
     }
   };
 
   useEffect(() => {
+    if (!user) {
+      setPosts([]);
+      return;
+    }
     fetchAllPosts();
-  }, [user?.id]);
+  }, [user?.id, activeLocation?.latitude, activeLocation?.longitude, activeLocation?.city, searchRadius]);
 
-  const addPost = async (content: string, type: PostType, imagesInput?: string[] | string | null) => {
+  const requestCurrentLocation = async (): Promise<boolean> => {
+    try {
+      const coords = await getCurrentCoordinates();
+      if (!coords) return false;
+
+      const address = await reverseGeocode(coords.latitude, coords.longitude);
+      const label = address.formattedAddress || `${address.city || 'Minha Localização'}${address.state ? `, ${address.state}` : ''}`;
+
+      const newLoc: ActiveLocation = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        city: address.city,
+        state: address.state,
+        neighborhood: address.neighborhood,
+        label: label || 'Localização Atual',
+        isGps: true,
+      };
+
+      setActiveLocationState(newLoc);
+      fetchAllPosts(newLoc, searchRadius);
+      return true;
+    } catch (e) {
+      console.warn('Erro ao solicitar localização atual:', e);
+      return false;
+    }
+  };
+
+  const setActiveLocation = (loc: ActiveLocation | null) => {
+    setActiveLocationState(loc);
+    fetchAllPosts(loc, searchRadius);
+  };
+
+  const setSearchRadius = (radius: number | null) => {
+    setSearchRadiusState(radius);
+    fetchAllPosts(activeLocation, radius);
+  };
+
+  const addPost = async (
+    content: string, 
+    type: PostType, 
+    imagesInput?: string[] | string | null,
+    locationData?: Partial<PostLocation>
+  ) => {
     let imagesList: string[] = [];
     if (Array.isArray(imagesInput)) {
       imagesList = imagesInput.filter(Boolean);
@@ -218,13 +280,25 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       imagesList = [imagesInput];
     }
 
+    const postCity = locationData?.city || activeLocation?.city || userProfile.city || '';
+    const postState = locationData?.state || activeLocation?.state || userProfile.state || '';
+    const postNeighborhood = locationData?.neighborhood || activeLocation?.neighborhood || '';
+    const postLat = locationData?.latitude !== undefined ? locationData.latitude : (activeLocation?.latitude || null);
+    const postLng = locationData?.longitude !== undefined ? locationData.longitude : (activeLocation?.longitude || null);
+    const postApprox = Boolean(locationData?.isApproximate);
+
     const newPostLocal: Post = {
       id: Date.now().toString(),
-      userId: user?.id || 'demo-user-1',
+      userId: user?.id || '',
       user: userProfile.name,
       avatar: userProfile.avatar,
-      city: userProfile.city,
-      state: userProfile.state,
+      city: postCity,
+      state: postState,
+      neighborhood: postNeighborhood,
+      latitude: postLat,
+      longitude: postLng,
+      isApproximate: postApprox,
+      distanceKm: null,
       type,
       content,
       images: imagesList,
@@ -249,11 +323,17 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
           type,
           content,
           images: uploadedImages,
+          latitude: postLat,
+          longitude: postLng,
+          city: postCity,
+          state: postState,
+          neighborhood: postNeighborhood,
+          isApproximate: postApprox,
         }),
       });
       fetchAllPosts();
     } catch (err) {
-      // Keep local state if server offline
+      // Falha silenciosa na sincronização offline
     }
   };
 
@@ -319,7 +399,11 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       avatarUrl: data.avatar,
       city: data.city,
       state: data.state,
-    });
+      neighborhood: data.neighborhood,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      hideExactLocation: data.hideExactLocation,
+    } as any);
   };
 
   const markAsResolved = async (postId: string) => {
@@ -376,6 +460,11 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         posts,
         userPosts,
         userProfile,
+        activeLocation,
+        searchRadius,
+        setActiveLocation,
+        setSearchRadius,
+        requestCurrentLocation,
         addPost,
         toggleLike,
         addComment,

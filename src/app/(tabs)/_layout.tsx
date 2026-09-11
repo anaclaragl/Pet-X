@@ -1,3 +1,4 @@
+import { DesktopSidebar } from '@/components/desktop-sidebar';
 import { ThemedText } from '@/components/themed-text';
 import { useNotifications } from '@/context/NotificationsContext';
 import { usePosts } from '@/context/PostsContext';
@@ -5,7 +6,7 @@ import { useChat } from '@/context/ChatContext';
 import { useTheme } from '@/hooks/use-theme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs, router } from 'expo-router';
-import { Image, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 interface TabBarProps {
   state: any;
@@ -15,8 +16,6 @@ interface TabBarProps {
 
 function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
   const theme = useTheme();
-  const { userProfile } = usePosts();
-  const { unreadCount } = useNotifications();
   const { conversations } = useChat();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
@@ -27,167 +26,7 @@ function ResponsiveTabBar({ state, descriptors, navigation }: TabBarProps) {
   const currentRouteName = routes[state.index]?.name;
 
   if (isDesktop) {
-    const desktopRoutes = routes.filter((r: any) => r.name !== 'post' && r.name !== 'profile');
-
-    return (
-      <View style={[styles.sidebarContainer, { backgroundColor: theme.background, borderRightColor: theme.border }]}>
-        {/* Brand Header */}
-        <Pressable
-          onPress={() => router.push('/(tabs)')}
-          style={({ pressed, hovered }: any) => [
-            styles.brandContainer,
-            pressed && { opacity: 0.8 },
-          ]}
-        >
-          {({ hovered }: any) => (
-            <>
-              <View style={[styles.brandLogoBg, { backgroundColor: theme.brand }, hovered && styles.brandPop]}>
-                <MaterialIcons name="pets" size={24} color="#FFF" />
-              </View>
-              <ThemedText style={styles.brandTitle}>Pet-X</ThemedText>
-            </>
-          )}
-        </Pressable>
-
-        {/* Navigation Items */}
-        <View style={styles.navGroup}>
-          {desktopRoutes.map((route: any) => {
-            const isFocused = currentRouteName === route.name;
-            const { options } = descriptors[route.key];
-
-            let iconName: keyof typeof MaterialIcons.glyphMap = 'home';
-            let label = options.title || route.name;
-            let showBadge = false;
-            let badgeValue = 0;
-
-            if (route.name === 'index') {
-              iconName = 'home';
-              label = 'Início';
-            } else if (route.name === 'explore') {
-              iconName = 'search';
-              label = 'Pesquisar';
-            } else if (route.name === 'notifications') {
-              iconName = isFocused ? 'notifications' : 'notifications-none';
-              label = 'Notificações';
-              showBadge = unreadCount > 0;
-              badgeValue = unreadCount;
-            } else if (route.name === 'messages') {
-              iconName = 'mail-outline';
-              label = 'Mensagens';
-              showBadge = unreadMessagesCount > 0;
-              badgeValue = unreadMessagesCount;
-            }
-
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
-              }
-            };
-
-            return (
-              <Pressable
-                key={route.key}
-                onPress={onPress}
-                style={({ pressed, hovered }: any) => [
-                  styles.sidebarNavItem,
-                  isFocused && { backgroundColor: theme.backgroundElement },
-                  hovered && !isFocused && { backgroundColor: 'rgba(255, 107, 107, 0.08)' },
-                  pressed && styles.buttonPressed,
-                ]}
-              >
-                {({ hovered }: any) => {
-                  const activeColor = isFocused || hovered ? theme.brand : theme.textSecondary;
-                  return (
-                    <>
-                      <View style={[styles.navIconWrapper, (hovered || isFocused) && styles.iconPop]}>
-                        <MaterialIcons
-                          name={iconName}
-                          size={26}
-                          color={activeColor}
-                        />
-                        {showBadge && (
-                          <View style={[styles.sidebarBadge, { backgroundColor: theme.brand }]}>
-                            <ThemedText style={styles.sidebarBadgeText}>
-                              {badgeValue > 99 ? '99+' : badgeValue}
-                            </ThemedText>
-                          </View>
-                        )}
-                      </View>
-                      <ThemedText
-                        style={[
-                          styles.sidebarNavLabel,
-                          { color: isFocused || hovered ? theme.text : theme.textSecondary },
-                          (isFocused || hovered) && { fontWeight: '700' },
-                        ]}
-                      >
-                        {label}
-                      </ThemedText>
-                    </>
-                  );
-                }}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Action Button: Novo Post */}
-        <Pressable
-          style={({ pressed, hovered }: any) => [
-            styles.sidebarPostBtn,
-            { backgroundColor: theme.brand },
-            hovered && styles.sidebarPostBtnHovered,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={() => router.push('/(tabs)/post')}
-        >
-          {({ hovered }: any) => (
-            <>
-              <View style={[styles.addIconWrapper, hovered && styles.iconRotatePop]}>
-                <MaterialIcons name="add" size={22} color="#FFF" />
-              </View>
-              <ThemedText style={styles.sidebarPostBtnText}>Novo Post</ThemedText>
-            </>
-          )}
-        </Pressable>
-
-        {/* User Profile Summary */}
-        <View style={[styles.sidebarFooter, { borderTopColor: theme.border }]}>
-          <Pressable
-            style={({ pressed, hovered }: any) => [
-              styles.sidebarUserProfile,
-              (hovered || currentRouteName === 'profile') && { backgroundColor: theme.backgroundElement },
-              hovered && ! (currentRouteName === 'profile') && { backgroundColor: 'rgba(255, 107, 107, 0.08)' },
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={() => router.push('/(tabs)/profile')}
-          >
-            {({ hovered }: any) => (
-              <>
-                <Image
-                  source={{ uri: userProfile.avatar }}
-                  style={[styles.sidebarAvatar, (hovered || currentRouteName === 'profile') && styles.avatarPop]}
-                  resizeMode="cover"
-                />
-                <View style={styles.sidebarUserInfo}>
-                  <ThemedText style={styles.sidebarUserName} numberOfLines={1}>
-                    {userProfile.name}
-                  </ThemedText>
-                  <ThemedText style={[styles.sidebarUserHandle, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {userProfile.username}
-                  </ThemedText>
-                </View>
-              </>
-            )}
-          </Pressable>
-        </View>
-      </View>
-    );
+    return <DesktopSidebar currentTab={currentRouteName} />;
   }
 
   // Mobile Bottom Bar Layout

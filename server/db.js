@@ -130,16 +130,33 @@ async function executeJsonQuery(text, params = []) {
 
   // 8. SELECT p.id, p.user_id, p.type, p.content, p.likes_count, p.is_resolved, p.created_at ... FROM posts
   if (sql.includes('FROM posts p')) {
-    const isUserFilter = sql.includes('WHERE p.user_id = $1');
-    const targetUserId = isUserFilter ? params[0] : null;
-    const currentUserId = isUserFilter ? params[1] : params[0];
+    const isUserFilter = sql.includes('WHERE p.user_id = $2');
+    const targetUserId = isUserFilter ? params[1] : null;
+    const currentUserId = params[0];
+    const userLat = !isUserFilter && params[1] !== null && params[1] !== undefined ? parseFloat(params[1]) : null;
+    const userLng = !isUserFilter && params[2] !== null && params[2] !== undefined ? parseFloat(params[2]) : null;
+    const radiusKm = !isUserFilter && params[3] !== null && params[3] !== undefined ? parseFloat(params[3]) : null;
 
     let postList = dbData.posts;
     if (isUserFilter) {
       postList = postList.filter(p => p.user_id === targetUserId);
     }
 
-    const rows = postList.map(p => {
+    const haversine = (lat1, lon1, lat2, lon2) => {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.round(R * c * 10) / 10;
+    };
+
+    let rows = postList.map(p => {
       const profile = dbData.profiles.find(pr => pr.user_id === p.user_id) || {};
       const images = dbData.post_images.filter(pi => pi.post_id === p.id).map(pi => pi.image_url);
 
@@ -157,11 +174,25 @@ async function executeJsonQuery(text, params = []) {
 
       const isLiked = dbData.likes.some(l => l.user_id === currentUserId && l.post_id === p.id);
 
+      let distanceKm = null;
+      const pLat = p.latitude !== undefined && p.latitude !== null ? parseFloat(p.latitude) : null;
+      const pLng = p.longitude !== undefined && p.longitude !== null ? parseFloat(p.longitude) : null;
+      if (userLat !== null && userLng !== null && pLat !== null && pLng !== null) {
+        distanceKm = haversine(userLat, userLng, pLat, pLng);
+      }
+
       return {
         id: p.id,
         user_id: p.user_id,
         type: p.type,
         content: p.content,
+        latitude: pLat,
+        longitude: pLng,
+        post_city: p.city || '',
+        post_state: p.state || '',
+        neighborhood: p.neighborhood || '',
+        is_approximate: Boolean(p.is_approximate),
+        distance_km: distanceKm,
         likes_count: p.likes_count || 0,
         is_resolved: p.is_resolved || false,
         created_at: p.created_at,
@@ -175,8 +206,21 @@ async function executeJsonQuery(text, params = []) {
       };
     });
 
-    // Ordenar por created_at DESC
-    rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (radiusKm !== null && userLat !== null && userLng !== null) {
+      rows = rows.filter(r => r.distance_km === null || r.distance_km <= radiusKm);
+      rows.sort((a, b) => {
+        const aUrgent = a.type === 'perdido' || a.type === 'ong' ? 0 : 1;
+        const bUrgent = b.type === 'perdido' || b.type === 'ong' ? 0 : 1;
+        if (aUrgent !== bUrgent) return aUrgent - bUrgent;
+        const aDist = a.distance_km !== null ? a.distance_km : 99999;
+        const bDist = b.distance_km !== null ? b.distance_km : 99999;
+        return aDist - bDist;
+      });
+    } else {
+      // Ordenar por created_at DESC
+      rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
     return { rows };
   }
 
@@ -187,7 +231,13 @@ async function executeJsonQuery(text, params = []) {
       user_id: params[1],
       type: params[2],
       content: params[3],
-      is_resolved: params[4] || false,
+      latitude: params[4] || null,
+      longitude: params[5] || null,
+      city: params[6] || '',
+      state: params[7] || '',
+      neighborhood: params[8] || '',
+      is_approximate: Boolean(params[9]),
+      is_resolved: false,
       likes_count: 0,
       created_at: new Date().toISOString()
     });

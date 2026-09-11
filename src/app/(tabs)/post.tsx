@@ -1,21 +1,31 @@
 import { useState } from 'react';
-import { StyleSheet, TextInput, Pressable, View, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, Pressable, View, Image, ScrollView, ActivityIndicator, Platform, Switch } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { usePosts, PostType } from '@/context/PostsContext';
+import { usePosts, PostType, PostLocation } from '@/context/PostsContext';
+import { getCurrentCoordinates, reverseGeocode } from '@/services/location';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function CreatePostScreen() {
   const theme = useTheme();
-  const { addPost } = usePosts();
+  const { addPost, activeLocation, userProfile } = usePosts();
   const [content, setContent] = useState('');
   const [tag, setTag] = useState<PostType>('outro');
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Location State
+  const [attachedLocation, setAttachedLocation] = useState<PostLocation | null>(null);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [showLocationEditor, setShowLocationEditor] = useState(false);
+  const [editCity, setEditCity] = useState('');
+  const [editState, setEditState] = useState('');
+  const [editNeighborhood, setEditNeighborhood] = useState('');
+  const [isApproximate, setIsApproximate] = useState(true);
 
   const tags: Array<{ id: PostType; label: string; color: string }> = [
     { id: 'perdido', label: 'Perdido', color: theme.lost },
@@ -61,13 +71,69 @@ export default function CreatePostScreen() {
     setImageUris(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
+  const handleAttachGpsLocation = async () => {
+    setIsFetchingLocation(true);
+    try {
+      const coords = await getCurrentCoordinates();
+      if (coords) {
+        const address = await reverseGeocode(coords.latitude, coords.longitude);
+        setAttachedLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          city: address.city || userProfile.city || '',
+          state: address.state || userProfile.state || '',
+          neighborhood: address.neighborhood || '',
+          isApproximate: isApproximate,
+        });
+        setEditCity(address.city || userProfile.city || '');
+        setEditState(address.state || userProfile.state || '');
+        setEditNeighborhood(address.neighborhood || '');
+        setShowLocationEditor(false);
+      } else {
+        // Fallback para edição manual
+        setShowLocationEditor(true);
+        setEditCity(userProfile.city || activeLocation?.city || '');
+        setEditState(userProfile.state || activeLocation?.state || '');
+      }
+    } catch (e) {
+      setShowLocationEditor(true);
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  const handleSaveManualLocation = () => {
+    if (!editCity.trim()) {
+      alert('Por favor informe ao menos a cidade.');
+      return;
+    }
+    setAttachedLocation({
+      latitude: attachedLocation?.latitude || activeLocation?.latitude || null,
+      longitude: attachedLocation?.longitude || activeLocation?.longitude || null,
+      city: editCity.trim(),
+      state: editState.trim(),
+      neighborhood: editNeighborhood.trim(),
+      isApproximate: isApproximate,
+    });
+    setShowLocationEditor(false);
+  };
+
   const handlePost = async () => {
     if ((!content.trim() && imageUris.length === 0) || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await addPost(content.trim(), tag, imageUris);
+      await addPost(
+        content.trim(), 
+        tag, 
+        imageUris, 
+        attachedLocation ? {
+          ...attachedLocation,
+          isApproximate: isApproximate,
+        } : undefined
+      );
       setContent('');
       setImageUris([]);
+      setAttachedLocation(null);
       router.replace('/(tabs)');
     } catch (e) {
       setIsSubmitting(false);
@@ -135,7 +201,7 @@ export default function CreatePostScreen() {
 
           <TextInput
             style={[styles.input, { color: theme.text }]}
-            placeholder="O que está acontecendo?"
+            placeholder="O que está acontecendo? Descreva detalhes, pet, características..."
             placeholderTextColor={theme.textSecondary}
             multiline
             value={content}
@@ -156,13 +222,121 @@ export default function CreatePostScreen() {
             </ScrollView>
           )}
 
-          <View style={styles.toolbar}>
-            <Pressable style={styles.toolbarAction} onPress={pickImageFromGallery}>
-              <MaterialIcons name="photo-library" size={24} color={theme.brand} />
-            </Pressable>
-            <Pressable style={styles.toolbarAction} onPress={takePhotoWithCamera}>
-              <MaterialIcons name="camera-alt" size={24} color={theme.brand} />
-            </Pressable>
+          {/* Attached Location Card */}
+          {attachedLocation && !showLocationEditor && (
+            <View style={[styles.locationCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+              <View style={styles.locationCardHeader}>
+                <MaterialIcons name="location-on" size={18} color={theme.brand} />
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <ThemedText style={{ fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
+                    {[attachedLocation.neighborhood, attachedLocation.city, attachedLocation.state].filter(Boolean).join(', ')}
+                  </ThemedText>
+                  <ThemedText style={{ fontSize: 11, color: theme.textSecondary }}>
+                    {isApproximate ? 'Localização aproximada (protege endereço exato)' : 'Ponto exato'}
+                  </ThemedText>
+                </View>
+                <Pressable onPress={() => setShowLocationEditor(true)} style={{ padding: 4, marginRight: 4 }}>
+                  <MaterialIcons name="edit" size={18} color={theme.textSecondary} />
+                </Pressable>
+                <Pressable onPress={() => setAttachedLocation(null)} style={{ padding: 4 }}>
+                  <MaterialIcons name="close" size={18} color={theme.textSecondary} />
+                </Pressable>
+              </View>
+
+              {/* Approximate Privacy Toggle */}
+              <View style={[styles.approxRow, { borderTopColor: theme.border }]}>
+                <ThemedText style={{ fontSize: 12, color: theme.textSecondary }}>
+                  Ocultar endereço exato (Aproximado)
+                </ThemedText>
+                <Switch
+                  value={isApproximate}
+                  onValueChange={setIsApproximate}
+                  trackColor={{ false: theme.border, true: theme.brand }}
+                  thumbColor="#FFF"
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Manual Location Editor Form */}
+          {showLocationEditor && (
+            <View style={[styles.locationEditorBox, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>Local do Acontecimento</ThemedText>
+                <Pressable onPress={() => setShowLocationEditor(false)}>
+                  <MaterialIcons name="close" size={18} color={theme.textSecondary} />
+                </Pressable>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                <TextInput
+                  style={[styles.smallInput, { flex: 2, backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                  placeholder="Cidade (ex: Belo Horizonte)"
+                  placeholderTextColor={theme.textSecondary}
+                  value={editCity}
+                  onChangeText={setEditCity}
+                />
+                <TextInput
+                  style={[styles.smallInput, { flex: 1, backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                  placeholder="UF (ex: MG)"
+                  placeholderTextColor={theme.textSecondary}
+                  maxLength={2}
+                  autoCapitalize="characters"
+                  value={editState}
+                  onChangeText={setEditState}
+                />
+              </View>
+              <TextInput
+                style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                placeholder="Bairro ou ponto de referência (opcional)"
+                placeholderTextColor={theme.textSecondary}
+                value={editNeighborhood}
+                onChangeText={setEditNeighborhood}
+              />
+              <Pressable
+                style={[styles.saveLocationBtn, { backgroundColor: theme.brand }]}
+                onPress={handleSaveManualLocation}
+              >
+                <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Salvar Localização</ThemedText>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Toolbar */}
+          <View style={[styles.toolbar, { borderTopColor: theme.border }]}>
+            <View style={styles.toolbarLeft}>
+              <Pressable style={styles.toolbarAction} onPress={pickImageFromGallery}>
+                <MaterialIcons name="photo-library" size={22} color={theme.brand} />
+              </Pressable>
+              <Pressable style={styles.toolbarAction} onPress={takePhotoWithCamera}>
+                <MaterialIcons name="camera-alt" size={22} color={theme.brand} />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.toolbarAction,
+                  attachedLocation && { backgroundColor: 'rgba(255, 107, 74, 0.25)' },
+                ]}
+                onPress={handleAttachGpsLocation}
+                disabled={isFetchingLocation}
+              >
+                {isFetchingLocation ? (
+                  <ActivityIndicator size="small" color={theme.brand} />
+                ) : (
+                  <MaterialIcons
+                    name="location-on"
+                    size={22}
+                    color={attachedLocation ? theme.brand : theme.textSecondary}
+                  />
+                )}
+              </Pressable>
+            </View>
+
+            {attachedLocation && (
+              <View style={styles.locationPillBadge}>
+                <ThemedText style={{ color: theme.brand, fontSize: 11, fontWeight: '700' }}>
+                  📍 {attachedLocation.city || 'Local Anexado'}
+                </ThemedText>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -240,8 +414,10 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 17,
+    lineHeight: 24,
     textAlignVertical: 'top',
+    minHeight: 120,
   },
   imageListContainer: {
     flexDirection: 'row',
@@ -269,16 +445,66 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  locationCard: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  locationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  approxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+  },
+  locationEditorBox: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  smallInput: {
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    fontSize: 13,
+  },
+  saveLocationBtn: {
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   toolbar: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: 'transparent',
-    gap: 16,
+  },
+  toolbarLeft: {
+    flexDirection: 'row',
+    gap: 12,
   },
   toolbarAction: {
     padding: 8,
     backgroundColor: 'rgba(255,107,74,0.1)',
     borderRadius: 20,
-  }
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  locationPillBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 107, 74, 0.1)',
+  },
 });

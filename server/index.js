@@ -150,7 +150,7 @@ app.get('/api/auth/check-username', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/auth/profile', authenticateToken, async (req, res) => {
-  let { name, username, bio, avatarUrl, city, state } = req.body;
+  let { name, username, bio, avatarUrl, city, state, neighborhood, latitude, longitude, hideExactLocation } = req.body;
   try {
     const profileRes = await db.query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId]);
     if (profileRes.rows.length <= 0) return res.status(404).json({ error: 'Perfil não encontrado' });
@@ -174,8 +174,19 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
     }
 
     await db.query(
-      'UPDATE profiles SET name = COALESCE($1, name), username = COALESCE($2, username), bio = COALESCE($3, bio), avatar_url = COALESCE($4, avatar_url), city = COALESCE($5, city), state = COALESCE($6, state) WHERE user_id = $7',
-      [name, username, bio, avatarUrl, city, state, req.user.userId]
+      `UPDATE profiles SET 
+        name = COALESCE($1, name), 
+        username = COALESCE($2, username), 
+        bio = COALESCE($3, bio), 
+        avatar_url = COALESCE($4, avatar_url), 
+        city = COALESCE($5, city), 
+        state = COALESCE($6, state),
+        neighborhood = COALESCE($7, neighborhood),
+        latitude = COALESCE($8, latitude),
+        longitude = COALESCE($9, longitude),
+        hide_exact_location = COALESCE($10, hide_exact_location)
+       WHERE user_id = $11`,
+      [name, username, bio, avatarUrl, city, state, neighborhood, latitude, longitude, hideExactLocation, req.user.userId]
     );
 
     const updated = await db.query('SELECT * FROM profiles WHERE user_id = $1', [req.user.userId]);
@@ -196,7 +207,7 @@ app.get('/api/users/:id/profile', async (req, res) => {
       const decoded = jwt.verify(token, JWT_SECRET);
       currentUserId = decoded.userId;
     } catch (err) {
-      // Token inválido ignorado
+      // Token opcional
     }
   }
 
@@ -206,12 +217,13 @@ app.get('/api/users/:id/profile', async (req, res) => {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    const query = `
+    const postsQuery = `
       SELECT p.id, p.user_id, p.type, p.content, p.likes_count, p.is_resolved, p.created_at,
+             p.latitude, p.longitude, p.city as post_city, p.state as post_state, p.neighborhood, p.is_approximate,
              pr.name as user_name, pr.avatar_url as avatar, pr.city as user_city, pr.state as user_state,
              COALESCE(
                (SELECT json_agg(image_url) FROM post_images WHERE post_id = p.id),
-               '[]'::json
+               '[]'
              ) as images,
              COALESCE(
                (SELECT json_agg(json_build_object(
@@ -221,26 +233,32 @@ app.get('/api/users/:id/profile', async (req, res) => {
                  'user', c_pr.name,
                  'avatar', c_pr.avatar_url,
                  'userId', c.user_id
-               )) FROM comments c JOIN profiles c_pr ON c.user_id = c_pr.user_id WHERE c.post_id = p.id),
-               '[]'::json
-             ) as comments,
-             EXISTS (
-               SELECT 1 FROM likes WHERE user_id = $2 AND post_id = p.id
-             ) as is_liked
+               ) ORDER BY c.created_at ASC)
+                FROM comments c
+                JOIN profiles c_pr ON c.user_id = c_pr.user_id
+                WHERE c.post_id = p.id
+             ),
+             '[]'
+           ) as comments,
+           EXISTS(SELECT 1 FROM likes WHERE user_id = $1 AND post_id = p.id) as is_liked
       FROM posts p
       JOIN profiles pr ON p.user_id = pr.user_id
-      WHERE p.user_id = $1
+      WHERE p.user_id = $2
       ORDER BY p.created_at DESC
     `;
+    const postsRes = await db.query(postsQuery, [currentUserId, targetUserId]);
 
-    const postsRes = await db.query(query, [targetUserId, currentUserId]);
     const formattedPosts = postsRes.rows.map(row => ({
       id: row.id,
       userId: row.user_id,
       user: row.user_name || 'Usuário',
       avatar: row.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-      city: row.user_city || '',
-      state: row.user_state || '',
+      city: row.post_city || row.user_city || '',
+      state: row.post_state || row.user_state || '',
+      neighborhood: row.neighborhood || '',
+      latitude: row.latitude !== null ? parseFloat(row.latitude) : null,
+      longitude: row.longitude !== null ? parseFloat(row.longitude) : null,
+      isApproximate: Boolean(row.is_approximate),
       type: row.type,
       content: row.content,
       images: row.images,
@@ -289,9 +307,57 @@ app.get('/api/posts', async (req, res) => {
     }
   }
 
+  const { lat, lng, radius_km, city, state } = req.query;
+  const parsedLat = lat !== undefined && lat !== '' && !isNaN(Number(lat)) ? parseFloat(lat) : null;
+  const parsedLng = lng !== undefined && lng !== '' && !isNaN(Number(lng)) ? parseFloat(lng) : null;
+  const parsedRadius = radius_km !== undefined && radius_km !== '' && !isNaN(Number(radius_km)) ? parseFloat(radius_km) : null;
+  const filterCity = city ? city.trim() : null;
+
   try {
+    let whereClause = '';
+    let orderByClause = 'ORDER BY p.created_at DESC';
+    const queryParams = [currentUserId, parsedLat, parsedLng];
+
+    if (parsedLat !== null && parsedLng !== null && parsedRadius !== null) {
+      queryParams.push(parsedRadius, filterCity || '');
+      whereClause = `
+        WHERE (
+          (p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND (
+            6371 * acos(
+              LEAST(1.0, GREATEST(-1.0, 
+                cos(radians($2::double precision)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($3::double precision)) +
+                sin(radians($2::double precision)) * sin(radians(p.latitude))
+              ))
+            ) <= $4::double precision
+          ))
+          OR (
+            p.latitude IS NULL AND (
+              $5::text <> '' AND LOWER(COALESCE(p.city, pr.city, '')) = LOWER($5::text)
+            )
+          )
+        )
+      `;
+      orderByClause = `
+        ORDER BY 
+          CASE WHEN p.type IN ('perdido', 'ong') THEN 0 ELSE 1 END ASC,
+          CASE WHEN p.latitude IS NOT NULL THEN (
+            6371 * acos(
+              LEAST(1.0, GREATEST(-1.0, 
+                cos(radians($2::double precision)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($3::double precision)) +
+                sin(radians($2::double precision)) * sin(radians(p.latitude))
+              ))
+            )
+          ) ELSE 99999 END ASC,
+          p.created_at DESC
+      `;
+    } else if (filterCity) {
+      queryParams.push(filterCity);
+      whereClause = `WHERE LOWER(COALESCE(p.city, pr.city, '')) = LOWER($4::text)`;
+    }
+
     const query = `
       SELECT p.id, p.user_id, p.type, p.content, p.likes_count, p.is_resolved, p.created_at,
+             p.latitude, p.longitude, p.city as post_city, p.state as post_state, p.neighborhood, p.is_approximate,
              pr.name as user_name, pr.avatar_url as avatar, pr.city as user_city, pr.state as user_state,
              COALESCE(
                (SELECT json_agg(image_url) FROM post_images WHERE post_id = p.id),
@@ -311,25 +377,42 @@ app.get('/api/posts', async (req, res) => {
              ),
              '[]'
            ) as comments,
-           EXISTS(SELECT 1 FROM likes WHERE user_id = $1 AND post_id = p.id) as is_liked
+           EXISTS(SELECT 1 FROM likes WHERE user_id = $1 AND post_id = p.id) as is_liked,
+           CASE 
+             WHEN $2::double precision IS NOT NULL AND $3::double precision IS NOT NULL AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL THEN
+               ROUND((6371 * acos(
+                 LEAST(1.0, GREATEST(-1.0, 
+                   cos(radians($2::double precision)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($3::double precision)) +
+                   sin(radians($2::double precision)) * sin(radians(p.latitude))
+                 ))
+               ))::numeric, 1)
+             ELSE NULL
+           END AS distance_km
       FROM posts p
       JOIN profiles pr ON p.user_id = pr.user_id
-      ORDER BY p.created_at DESC
+      ${whereClause}
+      ${orderByClause}
     `;
-    const result = await db.query(query, [currentUserId]);
+
+    const result = await db.query(query, queryParams);
 
     const formatted = result.rows.map(row => ({
       id: row.id,
       userId: row.user_id,
       user: row.user_name || 'Usuário',
       avatar: row.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-      city: row.user_city || '',
-      state: row.user_state || '',
+      city: row.post_city || row.user_city || '',
+      state: row.post_state || row.user_state || '',
+      neighborhood: row.neighborhood || '',
+      latitude: row.latitude !== null ? parseFloat(row.latitude) : null,
+      longitude: row.longitude !== null ? parseFloat(row.longitude) : null,
+      isApproximate: Boolean(row.is_approximate),
+      distanceKm: row.distance_km !== null ? parseFloat(row.distance_km) : null,
       type: row.type,
       content: row.content,
       images: row.images,
       image: row.images && row.images.length > 0 ? row.images[0] : null,
-      time: 'Recente', // Simplificado
+      time: 'Recente',
       likesCount: row.likes_count || 0,
       isLiked: row.is_liked || false,
       isResolved: row.is_resolved || false,
@@ -355,14 +438,19 @@ app.get('/api/posts', async (req, res) => {
 });
 
 app.post('/api/posts', authenticateToken, async (req, res) => {
-  const { type, content, images } = req.body;
+  const { type, content, images, latitude, longitude, city, state, neighborhood, isApproximate, is_approximate } = req.body;
   if (!content) return res.status(400).json({ error: 'O conteúdo do post é obrigatório' });
+
+  const postLat = latitude !== undefined && latitude !== null && !isNaN(Number(latitude)) ? parseFloat(latitude) : null;
+  const postLng = longitude !== undefined && longitude !== null && !isNaN(Number(longitude)) ? parseFloat(longitude) : null;
+  const approx = Boolean(isApproximate !== undefined ? isApproximate : is_approximate);
 
   try {
     const postId = generateId();
     await db.query(
-      'INSERT INTO posts (id, user_id, type, content, is_resolved) VALUES ($1, $2, $3, $4, FALSE)',
-      [postId, req.user.userId, type || 'outro', content]
+      `INSERT INTO posts (id, user_id, type, content, latitude, longitude, city, state, neighborhood, is_approximate, is_resolved) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE)`,
+      [postId, req.user.userId, type || 'outro', content, postLat, postLng, city || '', state || '', neighborhood || '', approx]
     );
 
     if (Array.isArray(images) && images.length > 0) {

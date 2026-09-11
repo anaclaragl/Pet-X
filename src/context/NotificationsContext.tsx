@@ -23,49 +23,6 @@ interface NotificationsContextType {
   refreshNotifications: () => Promise<void>;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'n1',
-    type: 'comment',
-    user: 'João Silva',
-    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
-    text: 'comentou no seu post: "Acho que vi um cachorrinho muito parecido..."',
-    targetId: '1',
-    timestamp: '1h',
-    isRead: false,
-  },
-  {
-    id: 'n2',
-    type: 'like',
-    user: 'ONG Patinhas',
-    userAvatar: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=150&q=80',
-    text: 'curtiu a sua publicação.',
-    targetId: '1',
-    timestamp: '3h',
-    isRead: false,
-  },
-  {
-    id: 'n3',
-    type: 'message',
-    user: 'João Silva',
-    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
-    text: 'enviou uma nova mensagem direta.',
-    targetId: '1',
-    timestamp: '14:32',
-    isRead: true,
-  },
-  {
-    id: 'n4',
-    type: 'alert',
-    user: 'Alerta Pet-X',
-    userAvatar: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&q=80',
-    text: 'Novo pet com características similares ao Rex avistado perto do Centro.',
-    targetId: '1',
-    timestamp: 'Ontem',
-    isRead: true,
-  },
-];
-
 const NotificationsContext = createContext<NotificationsContextType>({
   notifications: [],
   unreadCount: 0,
@@ -85,14 +42,21 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     }
     try {
       const data = await apiFetch<NotificationItem[]>('/api/notifications');
-      setNotifications(data);
+      if (Array.isArray(data)) {
+        setNotifications(data);
+      } else {
+        setNotifications([]);
+      }
     } catch (err) {
-      // Fallback para dados locais fictícios se offline
-      setNotifications(INITIAL_NOTIFICATIONS);
+      setNotifications([]);
     }
   };
 
   useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 5000); // Polling a cada 5s
     return () => clearInterval(interval);

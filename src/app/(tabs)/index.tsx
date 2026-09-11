@@ -11,15 +11,27 @@ import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
 import { PostOptionsMenuModal } from '@/components/post-options-modal';
 import { EditPostModal } from '@/components/edit-post-modal';
+import { LocationModal } from '@/components/location-modal';
+import { formatDistance } from '@/services/location';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function FeedScreen() {
   const theme = useTheme();
   const { user: currentUser } = useAuth();
-  const { posts, toggleLike, markAsResolved, deletePost, editPost, userProfile } = usePosts();
+  const { 
+    posts, 
+    toggleLike, 
+    markAsResolved, 
+    deletePost, 
+    editPost, 
+    userProfile,
+    activeLocation,
+    searchRadius,
+  } = usePosts();
   const { startOrOpenChat } = useChat();
 
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalImages, setModalImages] = useState<string[]>([]);
   const [modalInitialIndex, setModalInitialIndex] = useState(0);
@@ -65,11 +77,40 @@ export default function FeedScreen() {
     }
   };
 
+  const locationButtonLabel = activeLocation?.city || activeLocation?.label || 'Localização';
+  const radiusBadgeLabel = searchRadius ? `${searchRadius}km` : null;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.responsiveWrapper}>
         <ThemedView style={[styles.header, { borderBottomColor: theme.border }]}>
           <ThemedText type="title" style={{ fontSize: 24, color: theme.text }}>Início</ThemedText>
+
+          {/* Location Selector Pill */}
+          <Pressable
+            style={({ pressed, hovered }: any) => [
+              styles.locationPickerBtn,
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+              hovered && { borderColor: theme.brand, backgroundColor: 'rgba(255, 107, 74, 0.08)' },
+              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
+            ]}
+            onPress={() => setLocationModalVisible(true)}
+          >
+            <MaterialIcons
+              name={activeLocation?.isGps ? "my-location" : "location-on"}
+              size={16}
+              color={theme.brand}
+            />
+            <ThemedText style={[styles.locationPickerText, { color: theme.text }]} numberOfLines={1}>
+              {locationButtonLabel}
+            </ThemedText>
+            {radiusBadgeLabel && (
+              <View style={[styles.radiusPill, { backgroundColor: theme.brand }]}>
+                <ThemedText style={styles.radiusPillText}>{radiusBadgeLabel}</ThemedText>
+              </View>
+            )}
+            <MaterialIcons name="keyboard-arrow-down" size={18} color={theme.textSecondary} />
+          </Pressable>
         </ThemedView>
 
         <FlatList
@@ -81,6 +122,14 @@ export default function FeedScreen() {
               : (item.image ? [item.image] : []);
 
             const isPostOwner = item.userId === currentUser?.id;
+            const distanceText = formatDistance(item.distanceKm);
+
+            const displayLocationParts = [
+              item.neighborhood,
+              item.city,
+              item.state,
+            ].filter(Boolean);
+            const locationText = displayLocationParts.join(', ');
 
             return (
               <View style={[styles.postContainer, { borderBottomColor: theme.border }]}>
@@ -145,11 +194,22 @@ export default function FeedScreen() {
                         </ThemedText>
                       </View>
 
-                      {Boolean(item.city || item.state) ? (
+                      {/* Distance Badge */}
+                      {distanceText ? (
+                        <View style={[styles.distanceBadge, { backgroundColor: 'rgba(255, 107, 74, 0.12)', borderColor: theme.brand }]}>
+                          <MaterialIcons name="near-me" size={12} color={theme.brand} />
+                          <ThemedText style={{ color: theme.brand, fontSize: 11, fontWeight: '700' }}>
+                            {distanceText}
+                          </ThemedText>
+                        </View>
+                      ) : null}
+
+                      {/* Location Name Badge */}
+                      {locationText ? (
                         <View style={[styles.locationBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
                           <MaterialIcons name="location-on" size={13} color={theme.textSecondary} />
-                          <ThemedText style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }}>
-                            {[item.city, item.state].filter(Boolean).join(', ')}
+                          <ThemedText style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
+                            {locationText} {item.isApproximate ? '(Aprox.)' : ''}
                           </ThemedText>
                         </View>
                       ) : null}
@@ -218,6 +278,11 @@ export default function FeedScreen() {
           }}
         />
 
+        <LocationModal
+          visible={locationModalVisible}
+          onClose={() => setLocationModalVisible(false)}
+        />
+
         <ImageViewerModal
           visible={modalVisible}
           images={modalImages}
@@ -264,6 +329,43 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
+  },
+  locationPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+    maxWidth: 260,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  locationPickerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  radiusPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  radiusPillText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 3,
   },
   postContainer: {
     flexDirection: 'row',
@@ -319,6 +421,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 3,
+    maxWidth: 240,
   },
   resolvedBadge: {
     flexDirection: 'row',

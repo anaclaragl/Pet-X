@@ -32,6 +32,11 @@ export function DesktopSidebar({ currentTab }: DesktopSidebarProps) {
 
   const unreadMessagesCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
+  const isProfileActive =
+    currentTab === 'profile' ||
+    pathname === '/(tabs)/profile' ||
+    pathname.startsWith('/profile');
+
   const navItems: Array<{
     name: string;
     label: string;
@@ -72,6 +77,25 @@ export function DesktopSidebar({ currentTab }: DesktopSidebarProps) {
     },
   ];
 
+  const checkIsFocused = (itemName: string) => {
+    if (currentTab) {
+      return currentTab === itemName;
+    }
+    if (itemName === 'index') {
+      return pathname === '/' || pathname === '/(tabs)' || pathname.startsWith('/post');
+    }
+    if (itemName === 'messages') {
+      return pathname.includes('messages') || pathname.startsWith('/chat');
+    }
+    if (itemName === 'notifications') {
+      return pathname.includes('notifications');
+    }
+    if (itemName === 'explore') {
+      return pathname.includes('explore');
+    }
+    return false;
+  };
+
   return (
     <View style={[styles.sidebarContainer, { backgroundColor: theme.background, borderRightColor: theme.border }]}>
       {/* Brand Header */}
@@ -95,10 +119,7 @@ export function DesktopSidebar({ currentTab }: DesktopSidebarProps) {
       {/* Navigation Items */}
       <View style={styles.navGroup}>
         {navItems.map((item) => {
-          const isFocused =
-            currentTab === item.name ||
-            (item.name === 'index' && (pathname === '/' || pathname === '/(tabs)')) ||
-            (item.name !== 'index' && pathname.includes(item.name));
+          const isFocused = checkIsFocused(item.name);
 
           return (
             <Pressable
@@ -107,7 +128,7 @@ export function DesktopSidebar({ currentTab }: DesktopSidebarProps) {
               style={({ pressed, hovered }: any) => [
                 styles.sidebarNavItem,
                 isFocused && { backgroundColor: theme.backgroundElement },
-                hovered && !isFocused && { backgroundColor: 'rgba(255, 107, 107, 0.08)' },
+                hovered && !isFocused && { backgroundColor: 'rgba(255, 107, 74, 0.08)' },
                 pressed && styles.buttonPressed,
               ]}
             >
@@ -170,30 +191,43 @@ export function DesktopSidebar({ currentTab }: DesktopSidebarProps) {
         <Pressable
           style={({ pressed, hovered }: any) => [
             styles.sidebarUserProfile,
-            (hovered || currentTab === 'profile' || pathname.includes('profile')) && {
-              backgroundColor: theme.backgroundElement,
-            },
-            hovered && !(currentTab === 'profile') && { backgroundColor: 'rgba(255, 107, 107, 0.08)' },
+            isProfileActive && { backgroundColor: theme.backgroundElement },
+            hovered && !isProfileActive && { backgroundColor: 'rgba(255, 107, 74, 0.08)' },
             pressed && styles.buttonPressed,
           ]}
           onPress={() => router.push('/(tabs)/profile')}
         >
           {({ hovered }: any) => (
             <>
-              <Image
-                source={{ uri: userProfile.avatar }}
-                style={[
-                  styles.sidebarAvatar,
-                  (hovered || currentTab === 'profile') && styles.avatarPop,
-                ]}
-                resizeMode="cover"
-              />
+              {userProfile?.avatar ? (
+                <Image
+                  source={{ uri: userProfile.avatar }}
+                  style={[
+                    styles.sidebarAvatar,
+                    (hovered || isProfileActive) && styles.avatarPop,
+                  ]}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.sidebarAvatar,
+                    styles.avatarPlaceholder,
+                    { backgroundColor: theme.brand },
+                    (hovered || isProfileActive) && styles.avatarPop,
+                  ]}
+                >
+                  <ThemedText style={styles.avatarPlaceholderText}>
+                    {userProfile?.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
+                  </ThemedText>
+                </View>
+              )}
               <View style={styles.sidebarUserInfo}>
                 <ThemedText style={styles.sidebarUserName} numberOfLines={1}>
-                  {userProfile.name}
+                  {userProfile?.name || 'Meu Perfil'}
                 </ThemedText>
                 <ThemedText style={[styles.sidebarUserHandle, { color: theme.textSecondary }]} numberOfLines={1}>
-                  {userProfile.username}
+                  {userProfile?.username || '@perfil'}
                 </ThemedText>
               </View>
             </>
@@ -241,7 +275,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   brandPop: {
-    transform: [{ scale: 1.1 }],
+    transform: [{ scale: 1.08 }],
   },
   navGroup: {
     flex: 1,
@@ -256,7 +290,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
+        transition: 'all 0.15s ease-in-out',
       },
     }),
   },
@@ -287,7 +321,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   iconPop: {
-    transform: [{ scale: 1.15 }],
+    transform: [{ scale: 1.1 }],
   },
   sidebarPostBtn: {
     flexDirection: 'row',
@@ -300,7 +334,8 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         cursor: 'pointer',
-        boxShadow: '0px 4px 12px rgba(255, 107, 74, 0.3)',
+        boxShadow: '0px 4px 14px rgba(255, 107, 74, 0.35)',
+        transition: 'all 0.15s ease-in-out',
       },
     }),
   },
@@ -313,7 +348,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconRotatePop: {
-    transform: [{ scale: 1.2 }, { rotate: '90deg' }],
+    transform: [{ scale: 1.15 }, { rotate: '90deg' }],
   },
   sidebarPostBtnText: {
     color: '#FFF',
@@ -330,7 +365,10 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 24,
     ...Platform.select({
-      web: { cursor: 'pointer' },
+      web: {
+        cursor: 'pointer',
+        transition: 'all 0.15s ease-in-out',
+      },
     }),
   },
   sidebarAvatar: {
@@ -339,8 +377,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 10,
   },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarPlaceholderText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
   avatarPop: {
-    transform: [{ scale: 1.08 }],
+    transform: [{ scale: 1.06 }],
   },
   sidebarUserInfo: {
     flex: 1,
