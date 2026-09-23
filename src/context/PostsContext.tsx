@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch, uploadImageToPostgres } from '@/lib/api';
 import { getCurrentCoordinates, reverseGeocode, calculateDistanceKm } from '@/services/location';
+import { formatRelativeTime } from '@/utils/date';
 
 export type PostType = 'perdido' | 'encontrado' | 'ong' | 'outro';
 
@@ -53,6 +54,7 @@ export interface Post {
   content: string;
   images?: string[];
   image?: string | null;
+  createdAt?: string;
   time: string;
   likesCount: number;
   isLiked?: boolean;
@@ -175,12 +177,22 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         params.append('lat', loc.latitude.toString());
         params.append('lng', loc.longitude.toString());
         params.append('radius_km', radius.toString());
+        if (loc.city) params.append('city', loc.city);
+        if (loc.state) params.append('state', loc.state);
       } else if (loc?.latitude && loc?.longitude) {
         params.append('lat', loc.latitude.toString());
         params.append('lng', loc.longitude.toString());
-      } else if (loc?.city) {
-        params.append('city', loc.city);
         if (loc.state) params.append('state', loc.state);
+      } else {
+        if (loc?.city && radius) {
+          params.append('city', loc.city);
+        }
+        if (loc?.state) {
+          params.append('state', loc.state);
+        }
+        if (loc?.city && !loc?.state) {
+          params.append('city', loc.city);
+        }
       }
 
       const queryString = params.toString();
@@ -206,7 +218,8 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
           content: item.content,
           images: Array.isArray(item.images) ? item.images : [],
           image: Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : null,
-          time: 'Recente',
+          createdAt: item.createdAt || item.created_at,
+          time: item.time && item.time !== 'Recente' ? item.time : formatRelativeTime(item.createdAt || item.created_at),
           likesCount: item.likesCount || 0,
           isLiked: item.isLiked || false,
           commentsCount: item.commentsCount || 0,
@@ -303,6 +316,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       content,
       images: imagesList,
       image: imagesList[0] || null,
+      createdAt: new Date().toISOString(),
       time: 'Agora',
       likesCount: 0,
       isLiked: false,

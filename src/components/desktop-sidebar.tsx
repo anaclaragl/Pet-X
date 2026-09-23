@@ -11,6 +11,7 @@ import { router, usePathname } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/context/AuthContext';
 import { usePosts } from '@/context/PostsContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { useChat } from '@/context/ChatContext';
@@ -21,6 +22,7 @@ interface DesktopSidebarProps {
 
 export function DesktopSidebar({ currentTab }: DesktopSidebarProps) {
   const theme = useTheme();
+  const { user } = useAuth();
   const { userProfile } = usePosts();
   const { unreadCount } = useNotifications();
   const { conversations } = useChat();
@@ -32,10 +34,14 @@ export function DesktopSidebar({ currentTab }: DesktopSidebarProps) {
 
   const unreadMessagesCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
+  const cleanUsername = userProfile?.username?.replace('@', '').toLowerCase();
   const isProfileActive =
     currentTab === 'profile' ||
     pathname === '/(tabs)/profile' ||
-    pathname.startsWith('/profile');
+    (pathname.startsWith('/profile/') && (
+      (user?.id && pathname === `/profile/${user.id}`) ||
+      (cleanUsername && pathname.toLowerCase() === `/profile/${cleanUsername}`)
+    ));
 
   const navItems: Array<{
     name: string;

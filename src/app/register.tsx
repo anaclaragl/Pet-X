@@ -6,6 +6,8 @@ import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/context/AuthContext';
 
+import { StateCitySelector } from '@/components/state-city-selector';
+
 export default function RegisterScreen() {
   const theme = useTheme();
   const { signUp } = useAuth();
@@ -90,22 +92,14 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={setName}
           />
-          <View style={styles.row}>
-            <TextInput
-              style={[styles.input, styles.flex2, { color: theme.text, borderColor: theme.border }]}
-              placeholder="Cidade"
-              placeholderTextColor={theme.textSecondary}
-              value={city}
-              onChangeText={setCity}
-            />
-            <TextInput
-              style={[styles.input, styles.flex1, { color: theme.text, borderColor: theme.border }]}
-              placeholder="Estado (UF)"
-              placeholderTextColor={theme.textSecondary}
-              value={state}
-              onChangeText={setState}
-              maxLength={2}
-              autoCapitalize="characters"
+          
+          <View style={{ marginBottom: 12 }}>
+            <StateCitySelector
+              selectedState={state}
+              selectedCity={city}
+              onStateChange={setState}
+              onCityChange={setCity}
+              layout="row"
             />
           </View>
           <TextInput

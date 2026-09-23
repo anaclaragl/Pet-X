@@ -59,6 +59,26 @@ function authenticateToken(req, res, next) {
 // Helper IDs
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(7);
 
+// Helper Relative Time
+function formatRelativeTime(createdAt) {
+  if (!createdAt) return 'Recente';
+  const postDate = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - postDate.getTime();
+  if (isNaN(diffMs) || diffMs < 0) return 'Agora';
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 1) return 'Agora';
+  if (diffMins < 60) return `há ${diffMins} min`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `há ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'ontem';
+  if (diffDays < 7) return `há ${diffDays}d`;
+  if (diffDays < 30) return `há ${Math.floor(diffDays / 7)} sem`;
+  return postDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
 // ==================== AUTH ROUTES ====================
 
 app.post('/api/auth/register', async (req, res) => {
@@ -263,7 +283,8 @@ app.get('/api/users/:id/profile', async (req, res) => {
       content: row.content,
       images: row.images,
       image: row.images && row.images.length > 0 ? row.images[0] : null,
-      time: 'Recente',
+      createdAt: row.created_at,
+      time: formatRelativeTime(row.created_at),
       likesCount: row.likes_count || 0,
       isLiked: row.is_liked || false,
       isResolved: row.is_resolved || false,
@@ -312,6 +333,7 @@ app.get('/api/posts', async (req, res) => {
   const parsedLng = lng !== undefined && lng !== '' && !isNaN(Number(lng)) ? parseFloat(lng) : null;
   const parsedRadius = radius_km !== undefined && radius_km !== '' && !isNaN(Number(radius_km)) ? parseFloat(radius_km) : null;
   const filterCity = city ? city.trim() : null;
+  const filterState = state ? state.trim() : null;
 
   try {
     let whereClause = '';
@@ -319,7 +341,7 @@ app.get('/api/posts', async (req, res) => {
     const queryParams = [currentUserId, parsedLat, parsedLng];
 
     if (parsedLat !== null && parsedLng !== null && parsedRadius !== null) {
-      queryParams.push(parsedRadius, filterCity || '');
+      queryParams.push(parsedRadius, filterCity || '', filterState || '');
       whereClause = `
         WHERE (
           (p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND (
@@ -332,7 +354,8 @@ app.get('/api/posts', async (req, res) => {
           ))
           OR (
             p.latitude IS NULL AND (
-              $5::text <> '' AND LOWER(COALESCE(p.city, pr.city, '')) = LOWER($5::text)
+              ($5::text <> '' AND LOWER(COALESCE(p.city, pr.city, '')) = LOWER($5::text))
+              OR ($6::text <> '' AND LOWER(COALESCE(p.state, pr.state, '')) = LOWER($6::text))
             )
           )
         )
@@ -350,9 +373,31 @@ app.get('/api/posts', async (req, res) => {
           ) ELSE 99999 END ASC,
           p.created_at DESC
       `;
+    } else if (filterState && parsedRadius === null) {
+      // Todo o estado
+      queryParams.push(filterState);
+      whereClause = `WHERE LOWER(COALESCE(p.state, pr.state, '')) = LOWER($4::text)`;
+      if (parsedLat !== null && parsedLng !== null) {
+        orderByClause = `
+          ORDER BY 
+            CASE WHEN p.type IN ('perdido', 'ong') THEN 0 ELSE 1 END ASC,
+            CASE WHEN p.latitude IS NOT NULL THEN (
+              6371 * acos(
+                LEAST(1.0, GREATEST(-1.0, 
+                  cos(radians($2::double precision)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($3::double precision)) +
+                  sin(radians($2::double precision)) * sin(radians(p.latitude))
+                ))
+              )
+            ) ELSE 99999 END ASC,
+            p.created_at DESC
+        `;
+      }
     } else if (filterCity) {
       queryParams.push(filterCity);
       whereClause = `WHERE LOWER(COALESCE(p.city, pr.city, '')) = LOWER($4::text)`;
+    } else if (filterState) {
+      queryParams.push(filterState);
+      whereClause = `WHERE LOWER(COALESCE(p.state, pr.state, '')) = LOWER($4::text)`;
     }
 
     const query = `
@@ -412,7 +457,8 @@ app.get('/api/posts', async (req, res) => {
       content: row.content,
       images: row.images,
       image: row.images && row.images.length > 0 ? row.images[0] : null,
-      time: 'Recente',
+      createdAt: row.created_at,
+      time: formatRelativeTime(row.created_at),
       likesCount: row.likes_count || 0,
       isLiked: row.is_liked || false,
       isResolved: row.is_resolved || false,

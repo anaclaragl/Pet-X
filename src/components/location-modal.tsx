@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { usePosts, ActiveLocation } from '@/context/PostsContext';
+import { StateCitySelector } from './state-city-selector';
 
 interface LocationModalProps {
   visible: boolean;
@@ -31,6 +32,7 @@ const PRESET_CITIES: Array<{ city: string; state: string; lat: number; lng: numb
   { city: 'São Paulo', state: 'SP', lat: -23.5505, lng: -46.6333 },
   { city: 'Rio de Janeiro', state: 'RJ', lat: -22.9068, lng: -43.1729 },
   { city: 'Belo Horizonte', state: 'MG', lat: -19.9167, lng: -43.9345 },
+  { city: 'Itaúna', state: 'MG', lat: -20.0753, lng: -44.8672 },
   { city: 'Três Corações', state: 'MG', lat: -21.6944, lng: -45.2575 },
   { city: 'Curitiba', state: 'PR', lat: -25.4284, lng: -49.2733 },
   { city: 'Porto Alegre', state: 'RS', lat: -30.0346, lng: -51.2177 },
@@ -52,6 +54,20 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
   const [customState, setCustomState] = useState('');
   const [selectedRadius, setSelectedRadius] = useState<number | null>(searchRadius);
   const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedRadius(searchRadius);
+      setCustomCity(activeLocation?.city || '');
+      setCustomState(activeLocation?.state || '');
+    }
+  }, [visible, searchRadius, activeLocation]);
+
+  const hasRadiusChanged = selectedRadius !== searchRadius;
+  const hasCustomChanged =
+    customCity.trim() !== (activeLocation?.city || '').trim() ||
+    customState.trim() !== (activeLocation?.state || '').trim();
+  const hasChanges = hasRadiusChanged || hasCustomChanged;
 
   const handleUseGps = async () => {
     setIsLocating(true);
@@ -83,18 +99,26 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
     onClose();
   };
 
-  const handleApplyCustom = () => {
-    if (!customCity.trim()) return;
-    const newLoc: ActiveLocation = {
-      city: customCity.trim(),
-      state: customState.trim() || undefined,
-      label: `${customCity.trim()}${customState.trim() ? `, ${customState.trim().toUpperCase()}` : ''}`,
-      isGps: false,
-    };
-    setActiveLocation(newLoc);
-    if (selectedRadius !== searchRadius) {
+  const handleSaveAndApply = () => {
+    if (hasCustomChanged && (customCity.trim() || customState.trim())) {
+      const newLoc: ActiveLocation = {
+        city: customCity.trim() || undefined,
+        state: customState.trim() || undefined,
+        label: [customCity.trim(), customState.trim().toUpperCase()].filter(Boolean).join(', ') || 'Localização Personalizada',
+        isGps: false,
+      };
+      setActiveLocation(newLoc);
+    }
+    if (hasRadiusChanged) {
       setSearchRadius(selectedRadius);
     }
+    onClose();
+  };
+
+  const handleClearLocation = () => {
+    setActiveLocation(null);
+    setSearchRadius(null);
+    setSelectedRadius(null);
     setCustomCity('');
     setCustomState('');
     onClose();
@@ -177,43 +201,16 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
               </View>
             </View>
 
-            {/* Custom City Input */}
+            {/* Custom City & State Dropdown Selector */}
             <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Buscar por Cidade</ThemedText>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[
-                    styles.cityInput,
-                    { backgroundColor: theme.background, color: theme.text, borderColor: theme.border },
-                  ]}
-                  placeholder="Nome da cidade (ex: Campinas)"
-                  placeholderTextColor={theme.textSecondary}
-                  value={customCity}
-                  onChangeText={setCustomCity}
-                />
-                <TextInput
-                  style={[
-                    styles.stateInput,
-                    { backgroundColor: theme.background, color: theme.text, borderColor: theme.border },
-                  ]}
-                  placeholder="UF"
-                  placeholderTextColor={theme.textSecondary}
-                  maxLength={2}
-                  autoCapitalize="characters"
-                  value={customState}
-                  onChangeText={setCustomState}
-                />
-                <Pressable
-                  style={[
-                    styles.applyBtn,
-                    { backgroundColor: customCity.trim() ? theme.brand : theme.border },
-                  ]}
-                  onPress={handleApplyCustom}
-                  disabled={!customCity.trim()}
-                >
-                  <MaterialIcons name="check" size={20} color="#FFF" />
-                </Pressable>
-              </View>
+              <ThemedText style={styles.sectionTitle}>Filtrar por Estado e Cidade</ThemedText>
+              <StateCitySelector
+                selectedState={customState}
+                selectedCity={customCity}
+                onStateChange={setCustomState}
+                onCityChange={setCustomCity}
+                layout="column"
+              />
             </View>
 
             {/* Quick Cities Presets */}
@@ -254,6 +251,33 @@ export function LocationModal({ visible, onClose }: LocationModalProps) {
               </View>
             </View>
           </ScrollView>
+
+          {/* Modal Footer with Save & Clear Buttons */}
+          <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.background }]}>
+            <Pressable
+              style={({ pressed }: any) => [styles.clearBtn, pressed && { opacity: 0.6 }]}
+              onPress={handleClearLocation}
+            >
+              <ThemedText style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '600' }}>
+                Limpar Filtros
+              </ThemedText>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed, hovered }: any) => [
+                styles.saveAndApplyBtn,
+                { backgroundColor: theme.brand, opacity: hasChanges ? 1 : 0.85 },
+                hovered && { opacity: 0.9 },
+                pressed && { transform: [{ scale: 0.98 }] },
+              ]}
+              onPress={handleSaveAndApply}
+            >
+              <MaterialIcons name="check" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <ThemedText style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>
+                Salvar e Atualizar Feed
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -385,12 +409,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  applyBtn: {
-    width: 44,
+  applyCustomBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     height: 44,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 12,
+    paddingHorizontal: 16,
     ...Platform.select({
       web: { cursor: 'pointer' },
     }),
@@ -411,5 +437,33 @@ const styles = StyleSheet.create({
   },
   presetText: {
     fontSize: 13,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  clearBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  saveAndApplyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
   },
 });

@@ -30,9 +30,9 @@ export default function ChatScreen() {
 
   if (!conversation) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={[styles.container, isDesktop && { paddingLeft: 260 }, { backgroundColor: theme.background }]}>
         <DesktopSidebar currentTab="messages" />
-        <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
+        <View style={styles.responsiveWrapper}>
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
               <MaterialIcons name="arrow-back" size={24} color={theme.text} />
@@ -45,14 +45,13 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, isDesktop && { paddingLeft: 260 }, { backgroundColor: theme.background }]}>
       <DesktopSidebar currentTab="messages" />
-      <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
-        <View style={styles.responsiveWrapper}>
-          <KeyboardAvoidingView 
-            style={{ flex: 1 }} 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
+      <View style={styles.responsiveWrapper}>
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -124,7 +123,6 @@ export default function ChatScreen() {
         </View>
         </KeyboardAvoidingView>
         </View>
-      </View>
     </SafeAreaView>
   );
 }
@@ -132,10 +130,6 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  mainArea: {
-    flex: 1,
-    width: '100%',
   },
   responsiveWrapper: {
     flex: 1,

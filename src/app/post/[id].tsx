@@ -37,16 +37,14 @@ export default function PostDetailsScreen() {
 
   if (!post) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={[styles.container, isDesktop && { paddingLeft: 260 }, { backgroundColor: theme.background }]}>
         <DesktopSidebar currentTab="index" />
-        <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
-          <View style={styles.responsiveWrapper}>
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
-              <Pressable onPress={() => router.back()} style={styles.backButton}>
-                <MaterialIcons name="arrow-back" size={24} color={theme.text} />
-              </Pressable>
-              <ThemedText type="subtitle">Post não encontrado</ThemedText>
-            </View>
+        <View style={styles.responsiveWrapper}>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
+            <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <MaterialIcons name="arrow-back" size={24} color={theme.text} />
+            </Pressable>
+            <ThemedText type="subtitle">Post não encontrado</ThemedText>
           </View>
         </View>
       </SafeAreaView>
@@ -118,14 +116,13 @@ export default function PostDetailsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, isDesktop && { paddingLeft: 260 }, { backgroundColor: theme.background }]}>
       <DesktopSidebar currentTab="index" />
-      <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
-        <View style={styles.responsiveWrapper}>
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
+      <View style={styles.responsiveWrapper}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: theme.border }]}>
               <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -388,18 +385,13 @@ export default function PostDetailsScreen() {
           />
           </KeyboardAvoidingView>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  mainArea: {
-    flex: 1,
-    width: '100%',
   },
   responsiveWrapper: {
     flex: 1,

@@ -128,9 +128,9 @@ export default function UserProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={[styles.container, isDesktop && { paddingLeft: 260 }, { backgroundColor: theme.background }]}>
         <DesktopSidebar currentTab="profile" />
-        <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
+        <View style={styles.responsiveWrapper}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.brand} />
           </View>
@@ -148,12 +148,11 @@ export default function UserProfileScreen() {
   const totalLikes = userPosts.reduce((acc, p) => acc + (p.likesCount || 0), 0);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, isDesktop && { paddingLeft: 260 }, { backgroundColor: theme.background }]}>
       {/* Desktop Persistent Sidebar */}
       <DesktopSidebar currentTab="profile" />
 
-      <View style={[styles.mainArea, isDesktop && { marginLeft: 260 }]}>
-        <View style={styles.responsiveWrapper}>
+      <View style={styles.responsiveWrapper}>
           {/* Header */}
           <ThemedView style={[styles.header, { borderBottomColor: theme.border }]}>
             <Pressable
@@ -416,7 +415,6 @@ export default function UserProfileScreen() {
           onSave={(postId, newContent) => editPost(postId, newContent)}
         />
         </View>
-      </View>
     </SafeAreaView>
   );
 }
@@ -424,10 +422,6 @@ export default function UserProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  mainArea: {
-    flex: 1,
-    width: '100%',
   },
   loadingContainer: {
     flex: 1,

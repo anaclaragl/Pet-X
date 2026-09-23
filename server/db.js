@@ -128,14 +128,61 @@ async function executeJsonQuery(text, params = []) {
     return { rows: [] };
   }
 
+function formatRelativeTime(createdAt) {
+  if (!createdAt) return 'Recente';
+  const postDate = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - postDate.getTime();
+  if (isNaN(diffMs) || diffMs < 0) return 'Agora';
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 1) return 'Agora';
+  if (diffMins < 60) return `há ${diffMins} min`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `há ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'ontem';
+  if (diffDays < 7) return `há ${diffDays}d`;
+  if (diffDays < 30) return `há ${Math.floor(diffDays / 7)} sem`;
+  return postDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
   // 8. SELECT p.id, p.user_id, p.type, p.content, p.likes_count, p.is_resolved, p.created_at ... FROM posts
   if (sql.includes('FROM posts p')) {
     const isUserFilter = sql.includes('WHERE p.user_id = $2');
     const targetUserId = isUserFilter ? params[1] : null;
     const currentUserId = params[0];
-    const userLat = !isUserFilter && params[1] !== null && params[1] !== undefined ? parseFloat(params[1]) : null;
-    const userLng = !isUserFilter && params[2] !== null && params[2] !== undefined ? parseFloat(params[2]) : null;
-    const radiusKm = !isUserFilter && params[3] !== null && params[3] !== undefined ? parseFloat(params[3]) : null;
+    
+    const p1Num = !isUserFilter && params[1] !== null && params[1] !== undefined && !isNaN(Number(params[1])) ? parseFloat(params[1]) : null;
+    const p2Num = !isUserFilter && params[2] !== null && params[2] !== undefined && !isNaN(Number(params[2])) ? parseFloat(params[2]) : null;
+    const userLat = p1Num;
+    const userLng = p2Num;
+
+    let radiusKm = null;
+    let filterCity = null;
+    let filterState = null;
+
+    if (!isUserFilter) {
+      if (sql.includes('p.state') || sql.includes('pr.state')) {
+        const stateArg = params.find(p => typeof p === 'string' && p.trim().length === 2);
+        if (stateArg) {
+          filterState = stateArg.trim();
+        } else if (typeof params[3] === 'string' && params[3].trim().length === 2) {
+          filterState = params[3].trim();
+        }
+      }
+
+      if (sql.includes('p.city') || sql.includes('pr.city')) {
+        const cityArg = params.find(p => typeof p === 'string' && p.trim().length > 2 && isNaN(Number(p)));
+        if (cityArg) {
+          filterCity = cityArg.trim();
+        }
+      }
+
+      if (params[3] !== null && params[3] !== undefined && params[3] !== '' && !isNaN(Number(params[3]))) {
+        radiusKm = parseFloat(params[3]);
+      }
+    }
 
     let postList = dbData.posts;
     if (isUserFilter) {
@@ -196,6 +243,7 @@ async function executeJsonQuery(text, params = []) {
         likes_count: p.likes_count || 0,
         is_resolved: p.is_resolved || false,
         created_at: p.created_at,
+        time: formatRelativeTime(p.created_at),
         user_name: profile.name,
         avatar: profile.avatar_url,
         user_city: profile.city || '',
@@ -206,8 +254,39 @@ async function executeJsonQuery(text, params = []) {
       };
     });
 
-    if (radiusKm !== null && userLat !== null && userLng !== null) {
-      rows = rows.filter(r => r.distance_km === null || r.distance_km <= radiusKm);
+    if (filterState && (radiusKm === null || isNaN(radiusKm))) {
+      // Todo o estado
+      rows = rows.filter(r => 
+        (r.post_state && r.post_state.toLowerCase() === filterState.toLowerCase()) ||
+        (r.user_state && r.user_state.toLowerCase() === filterState.toLowerCase())
+      );
+    } else if (filterCity && radiusKm === null) {
+      rows = rows.filter(r => 
+        (r.post_city && r.post_city.toLowerCase() === filterCity.toLowerCase()) ||
+        (r.user_city && r.user_city.toLowerCase() === filterCity.toLowerCase())
+      );
+    }
+
+    if (radiusKm !== null && !isNaN(radiusKm) && userLat !== null && userLng !== null) {
+      rows = rows.filter(r => {
+        if (r.distance_km !== null) {
+          return r.distance_km <= radiusKm;
+        }
+        if (filterCity && (
+          (r.post_city && r.post_city.toLowerCase() === filterCity.toLowerCase()) ||
+          (r.user_city && r.user_city.toLowerCase() === filterCity.toLowerCase())
+        )) {
+          return true;
+        }
+        if (filterState && (
+          (r.post_state && r.post_state.toLowerCase() === filterState.toLowerCase()) ||
+          (r.user_state && r.user_state.toLowerCase() === filterState.toLowerCase())
+        )) {
+          return true;
+        }
+        return false;
+      });
+
       rows.sort((a, b) => {
         const aUrgent = a.type === 'perdido' || a.type === 'ong' ? 0 : 1;
         const bUrgent = b.type === 'perdido' || b.type === 'ong' ? 0 : 1;
@@ -215,6 +294,16 @@ async function executeJsonQuery(text, params = []) {
         const aDist = a.distance_km !== null ? a.distance_km : 99999;
         const bDist = b.distance_km !== null ? b.distance_km : 99999;
         return aDist - bDist;
+      });
+    } else if (userLat !== null && userLng !== null) {
+      rows.sort((a, b) => {
+        const aUrgent = a.type === 'perdido' || a.type === 'ong' ? 0 : 1;
+        const bUrgent = b.type === 'perdido' || b.type === 'ong' ? 0 : 1;
+        if (aUrgent !== bUrgent) return aUrgent - bUrgent;
+        const aDist = a.distance_km !== null ? a.distance_km : 99999;
+        const bDist = b.distance_km !== null ? b.distance_km : 99999;
+        if (aDist !== bDist) return aDist - bDist;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
     } else {
       // Ordenar por created_at DESC

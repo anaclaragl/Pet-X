@@ -77,8 +77,8 @@ export default function FeedScreen() {
     }
   };
 
-  const locationButtonLabel = activeLocation?.city || activeLocation?.label || 'Localização';
-  const radiusBadgeLabel = searchRadius ? `${searchRadius}km` : null;
+  const locationButtonLabel = activeLocation?.city || activeLocation?.label || (activeLocation?.state ? `Estado ${activeLocation.state}` : 'Localização');
+  const radiusBadgeLabel = searchRadius ? `${searchRadius}km` : (activeLocation?.state ? `Todo ${activeLocation.state}` : null);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>

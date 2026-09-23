@@ -8,6 +8,7 @@ import { usePosts, PostType, PostLocation } from '@/context/PostsContext';
 import { getCurrentCoordinates, reverseGeocode } from '@/services/location';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StateCitySelector } from '@/components/state-city-selector';
 
 export default function CreatePostScreen() {
   const theme = useTheme();
@@ -34,7 +35,15 @@ export default function CreatePostScreen() {
     { id: 'outro', label: 'Outro', color: theme.brand },
   ];
 
+  const MAX_CHARS = 500;
+  const MAX_IMAGES = 4;
+
   const pickImageFromGallery = async () => {
+    if (imageUris.length >= MAX_IMAGES) {
+      alert(`Você já atingiu o limite máximo de ${MAX_IMAGES} fotos.`);
+      return;
+    }
+
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
       alert('Permissão para acessar a galeria é necessária!');
@@ -48,11 +57,22 @@ export default function CreatePostScreen() {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const selected = result.assets.map(a => a.uri);
-      setImageUris(prev => [...prev, ...selected]);
+      const remainingSlots = MAX_IMAGES - imageUris.length;
+      if (selected.length > remainingSlots) {
+        alert(`Você só pode adicionar mais ${remainingSlots} foto(s). O limite de ${MAX_IMAGES} fotos por post foi aplicado.`);
+        setImageUris(prev => [...prev, ...selected.slice(0, remainingSlots)]);
+      } else {
+        setImageUris(prev => [...prev, ...selected]);
+      }
     }
   };
 
   const takePhotoWithCamera = async () => {
+    if (imageUris.length >= MAX_IMAGES) {
+      alert(`Você já atingiu o limite máximo de ${MAX_IMAGES} fotos.`);
+      return;
+    }
+
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissionResult.granted) {
       alert('Permissão para usar a câmera é necessária!');
@@ -206,8 +226,31 @@ export default function CreatePostScreen() {
             multiline
             value={content}
             onChangeText={setContent}
+            maxLength={MAX_CHARS}
             autoFocus
           />
+
+          {/* Character Counter & Notice */}
+          <View style={styles.counterRow}>
+            {content.length >= MAX_CHARS ? (
+              <View style={styles.limitNotice}>
+                <MaterialIcons name="info-outline" size={14} color="#EF4444" />
+                <ThemedText style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>
+                  Limite de 500 caracteres atingido
+                </ThemedText>
+              </View>
+            ) : (
+              <View />
+            )}
+            <ThemedText
+              style={[
+                styles.charCounterText,
+                { color: content.length >= MAX_CHARS ? '#EF4444' : theme.textSecondary },
+              ]}
+            >
+              {content.length}/{MAX_CHARS}
+            </ThemedText>
+          </View>
 
           {imageUris.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageListContainer}>
@@ -261,32 +304,22 @@ export default function CreatePostScreen() {
           {/* Manual Location Editor Form */}
           {showLocationEditor && (
             <View style={[styles.locationEditorBox, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <ThemedText style={{ fontSize: 13, fontWeight: '700' }}>Local do Acontecimento</ThemedText>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <ThemedText style={{ fontSize: 14, fontWeight: '700' }}>Local do Acontecimento</ThemedText>
                 <Pressable onPress={() => setShowLocationEditor(false)}>
                   <MaterialIcons name="close" size={18} color={theme.textSecondary} />
                 </Pressable>
               </View>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                <TextInput
-                  style={[styles.smallInput, { flex: 2, backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                  placeholder="Cidade (ex: Belo Horizonte)"
-                  placeholderTextColor={theme.textSecondary}
-                  value={editCity}
-                  onChangeText={setEditCity}
-                />
-                <TextInput
-                  style={[styles.smallInput, { flex: 1, backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                  placeholder="UF (ex: MG)"
-                  placeholderTextColor={theme.textSecondary}
-                  maxLength={2}
-                  autoCapitalize="characters"
-                  value={editState}
-                  onChangeText={setEditState}
-                />
-              </View>
+
+              <StateCitySelector
+                selectedState={editState}
+                selectedCity={editCity}
+                onStateChange={(uf) => setEditState(uf)}
+                onCityChange={(city) => setEditCity(city)}
+              />
+
               <TextInput
-                style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, marginBottom: 8 }]}
+                style={[styles.smallInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border, marginTop: 10, marginBottom: 8 }]}
                 placeholder="Bairro ou ponto de referência (opcional)"
                 placeholderTextColor={theme.textSecondary}
                 value={editNeighborhood}
@@ -296,7 +329,7 @@ export default function CreatePostScreen() {
                 style={[styles.saveLocationBtn, { backgroundColor: theme.brand }]}
                 onPress={handleSaveManualLocation}
               >
-                <ThemedText style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Salvar Localização</ThemedText>
+                <ThemedText style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Salvar Localização</ThemedText>
               </Pressable>
             </View>
           )}
@@ -304,10 +337,16 @@ export default function CreatePostScreen() {
           {/* Toolbar */}
           <View style={[styles.toolbar, { borderTopColor: theme.border }]}>
             <View style={styles.toolbarLeft}>
-              <Pressable style={styles.toolbarAction} onPress={pickImageFromGallery}>
+              <Pressable 
+                style={[styles.toolbarAction, imageUris.length >= MAX_IMAGES && { opacity: 0.4 }]} 
+                onPress={pickImageFromGallery}
+              >
                 <MaterialIcons name="photo-library" size={22} color={theme.brand} />
               </Pressable>
-              <Pressable style={styles.toolbarAction} onPress={takePhotoWithCamera}>
+              <Pressable 
+                style={[styles.toolbarAction, imageUris.length >= MAX_IMAGES && { opacity: 0.4 }]} 
+                onPress={takePhotoWithCamera}
+              >
                 <MaterialIcons name="camera-alt" size={22} color={theme.brand} />
               </Pressable>
               <Pressable
@@ -328,6 +367,19 @@ export default function CreatePostScreen() {
                   />
                 )}
               </Pressable>
+
+              {/* Photo Count Indicator */}
+              <View style={styles.photoCountWrapper}>
+                <ThemedText
+                  style={{
+                    fontSize: 12,
+                    color: imageUris.length >= MAX_IMAGES ? '#EF4444' : theme.textSecondary,
+                    fontWeight: imageUris.length >= MAX_IMAGES ? '700' : '500',
+                  }}
+                >
+                  {imageUris.length}/{MAX_IMAGES} fotos
+                </ThemedText>
+              </View>
             </View>
 
             {attachedLocation && (
@@ -506,5 +558,24 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 107, 74, 0.1)',
+  },
+  counterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  limitNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  charCounterText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  photoCountWrapper: {
+    justifyContent: 'center',
+    marginLeft: 6,
   },
 });
