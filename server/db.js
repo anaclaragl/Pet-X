@@ -5,10 +5,18 @@ require('dotenv').config();
 
 const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/petx';
 
+const isCloudDb =
+  process.env.DATABASE_SSL === 'true' ||
+  process.env.NODE_ENV === 'production' ||
+  (process.env.DATABASE_URL &&
+    !process.env.DATABASE_URL.includes('localhost') &&
+    !process.env.DATABASE_URL.includes('127.0.0.1'));
+
 const pool = new Pool({
   connectionString,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  ssl: isCloudDb ? { rejectUnauthorized: false } : false,
 });
+
 
 pool.on('error', (err) => {
   // Ignorar erros na inicialização se estiver usando JSON DB

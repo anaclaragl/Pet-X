@@ -37,13 +37,22 @@ const upload = multer({
       cb(new Error('Apenas arquivos de imagem são permitidos.'));
     }
   },
-});
-
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(uploadsDir));
 
+// Healthcheck routes for cloud deployment
+app.get('/', (req, res) => {
+  res.json({ message: 'Pet-X API is running', status: 'online' });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'pet-x-backend', timestamp: new Date().toISOString() });
+});
+
 // Auth Middleware
+
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -861,10 +870,11 @@ app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
 app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
   const host = req.get('host');
-  const protocol = req.protocol;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
   res.json({ url: fileUrl });
 });
+
 
 // Start Server
 app.listen(PORT, () => {

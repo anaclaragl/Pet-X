@@ -1,18 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Modal,
-  StyleSheet,
-  View,
-  Pressable,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/themed-text';
+import { ActiveLocation, usePosts } from '@/context/PostsContext';
 import { useTheme } from '@/hooks/use-theme';
-import { usePosts, ActiveLocation } from '@/context/PostsContext';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native';
 import { StateCitySelector } from './state-city-selector';
 
 interface LocationModalProps {
@@ -32,12 +31,9 @@ const PRESET_CITIES: Array<{ city: string; state: string; lat: number; lng: numb
   { city: 'São Paulo', state: 'SP', lat: -23.5505, lng: -46.6333 },
   { city: 'Rio de Janeiro', state: 'RJ', lat: -22.9068, lng: -43.1729 },
   { city: 'Belo Horizonte', state: 'MG', lat: -19.9167, lng: -43.9345 },
-  { city: 'Itaúna', state: 'MG', lat: -20.0753, lng: -44.8672 },
-  { city: 'Três Corações', state: 'MG', lat: -21.6944, lng: -45.2575 },
   { city: 'Curitiba', state: 'PR', lat: -25.4284, lng: -49.2733 },
   { city: 'Porto Alegre', state: 'RS', lat: -30.0346, lng: -51.2177 },
   { city: 'Brasília', state: 'DF', lat: -15.7975, lng: -47.8919 },
-  { city: 'Campinas', state: 'SP', lat: -22.9056, lng: -47.0608 },
 ];
 
 export function LocationModal({ visible, onClose }: LocationModalProps) {
