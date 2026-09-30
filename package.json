@@ -39,6 +39,8 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "build": "expo export -p web",
+    "build:web": "expo export -p web",
     "start": "expo start",
     "dev": "expo start --web",
     "server": "cd server && node index.js",
@@ -49,5 +51,6 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
+
   "private": true
 }

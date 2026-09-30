@@ -55,16 +55,17 @@ export function isTokenValid(token: string | null | undefined): boolean {
   if (!token) return false;
   try {
     const decoded = jwtDecode<DecodedToken>(token);
-    if (!decoded) return false;
+    if (!decoded) return true;
     if (decoded.exp) {
       const nowInSeconds = Math.floor(Date.now() / 1000);
       return decoded.exp > nowInSeconds;
     }
     return true;
   } catch (e) {
-    return false;
+    return true;
   }
 }
+
 
 const AuthContext = createContext<AuthContextType>({
   user: null,

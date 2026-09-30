@@ -47,6 +47,12 @@ export default function LoginScreen() {
           </ThemedText>
         )}
 
+        <View style={[styles.demoBanner, { backgroundColor: 'rgba(255, 107, 74, 0.1)', borderColor: theme.brand }]}>
+          <ThemedText style={[styles.demoBannerText, { color: theme.brand }]}>
+            ✨ Modo Demonstração: digite qualquer e-mail e senha para explorar o app sem cadastro prévio!
+          </ThemedText>
+        </View>
+
         <TextInput
           style={[styles.input, { color: theme.text, borderColor: theme.border }]}
           placeholder="E-mail"
@@ -80,6 +86,25 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
+        <Pressable 
+          style={({ pressed }) => [
+            styles.demoButton, 
+            { borderColor: theme.brand, opacity: pressed || loading ? 0.7 : 1 }
+          ]} 
+          onPress={() => {
+            setEmail('ana@petx.com');
+            setPassword('123456');
+            signIn({ email: 'ana@petx.com', password: '123' }).then((res) => {
+              if (!res.error) router.replace('/(tabs)');
+            });
+          }}
+          disabled={loading}
+        >
+          <ThemedText style={[styles.demoButtonText, { color: theme.brand }]}>
+            ⚡ Acesso Rápido (Entrar como Visitante)
+          </ThemedText>
+        </Pressable>
+
         <Pressable onPress={() => router.push('/register')} style={styles.linkContainer}>
           <ThemedText type="small">Ainda não tem conta? <ThemedText type="smallBold" style={{ color: theme.brand }}>Cadastre-se</ThemedText></ThemedText>
         </Pressable>
@@ -87,6 +112,7 @@ export default function LoginScreen() {
     </ThemedView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -127,5 +153,30 @@ const styles = StyleSheet.create({
   linkContainer: {
     marginTop: 24,
     alignItems: 'center',
-  }
+  },
+  demoBanner: {
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  demoBannerText: {
+    fontSize: 13,
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  demoButton: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  demoButtonText: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });
+
