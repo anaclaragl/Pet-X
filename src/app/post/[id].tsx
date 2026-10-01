@@ -69,8 +69,9 @@ export default function PostDetailsScreen() {
       const convId = await startOrOpenChat(
         post.userId,
         post.user,
-        post.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80'
+        post.avatar || 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&q=80'
       );
+
       router.push(`/chat/${convId}` as any);
     } catch (e) {
       console.warn('Erro ao abrir conversa:', e);

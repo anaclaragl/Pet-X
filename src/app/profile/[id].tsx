@@ -101,7 +101,7 @@ export default function UserProfileScreen() {
       const convId = await startOrOpenChat(
         id,
         profileData.name || 'Usuário',
-        profileData.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80'
+        profileData.avatar_url || 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&q=80'
       );
       router.push(`/chat/${convId}` as any);
     } catch (e) {
@@ -141,7 +141,8 @@ export default function UserProfileScreen() {
 
   const avatarUrl =
     profileData?.avatar_url ||
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80';
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&q=80';
+
   const displayName = profileData?.name || 'Usuário';
   const usernameStr = profileData?.username || `@${displayName.toLowerCase().replace(/\s+/g, '')}`;
   const isOng = profileData?.account_type === 'ong';

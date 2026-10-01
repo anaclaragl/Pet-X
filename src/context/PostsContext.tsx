@@ -173,27 +173,21 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       let url = '/api/posts';
       const params = new URLSearchParams();
 
-      if (loc?.latitude && loc?.longitude && radius) {
+      if (loc?.latitude && loc?.longitude) {
         params.append('lat', loc.latitude.toString());
         params.append('lng', loc.longitude.toString());
-        params.append('radius_km', radius.toString());
-        if (loc.city) params.append('city', loc.city);
-        if (loc.state) params.append('state', loc.state);
-      } else if (loc?.latitude && loc?.longitude) {
-        params.append('lat', loc.latitude.toString());
-        params.append('lng', loc.longitude.toString());
-        if (loc.state) params.append('state', loc.state);
+        if (radius) {
+          params.append('radius_km', radius.toString());
+        }
       } else {
-        if (loc?.city && radius) {
+        if (loc?.city) {
           params.append('city', loc.city);
         }
         if (loc?.state) {
           params.append('state', loc.state);
         }
-        if (loc?.city && !loc?.state) {
-          params.append('city', loc.city);
-        }
       }
+
 
       const queryString = params.toString();
       if (queryString) {

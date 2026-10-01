@@ -79,6 +79,34 @@ export async function getCurrentCoordinates(): Promise<LocationCoordinates | nul
  * Obtém endereço/cidade a partir das coordenadas geográficas
  */
 export async function reverseGeocode(lat: number, lng: number): Promise<GeocodedAddress> {
+  // 1. No Navegador Web, expo-location não tem geocodificação reversa nativa gratuita.
+  // Usamos a API pública de reverse geocoding para navegadores (BigDataCloud / OpenStreetMap):
+  if (Platform.OS === 'web') {
+    try {
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const city = data.city || data.locality || data.principalSubdivision || '';
+        const stateCode = data.principalSubdivisionCode ? data.principalSubdivisionCode.replace('BR-', '') : (data.principalSubdivision || '');
+        const neighborhood = data.localityInfo?.administrative?.[3]?.name || data.locality || '';
+        const parts = [neighborhood, city, stateCode].filter(Boolean);
+        if (city || stateCode) {
+          return {
+            city,
+            state: stateCode,
+            neighborhood,
+            formattedAddress: parts.join(', ') || `${city}, ${stateCode}`,
+          };
+        }
+      }
+    } catch (webErr) {
+      console.warn('Geocodificação web externa falhou, tentando fallback:', webErr);
+    }
+  }
+
+  // 2. Fallback nativo (celular / Expo Go)
   try {
     const results = await Location.reverseGeocodeAsync({
       latitude: lat,
@@ -100,11 +128,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Geocoded
       };
     }
   } catch (err) {
-    console.warn('Falha na geocodificação reversa:', err);
+    console.warn('Falha na geocodificação reversa nativa:', err);
   }
 
   return {};
 }
+
 
 /**
  * Calcula a distância em quilômetros entre duas coordenadas (fórmula de Haversine)

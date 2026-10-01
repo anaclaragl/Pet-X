@@ -10,12 +10,12 @@ async function seed() {
     // 1. Criar Usuários Demo
     const users = [
       {
-        id: 'usr_ana_01',
-        email: 'ana@petx.com',
-        name: 'Ana Clara',
-        username: 'anaclara.vet',
+        id: 'usr_alice_01',
+        email: 'alice@petx.com',
+        name: 'Alice',
+        username: 'alice.vet',
         bio: 'Veterinária e protetora de animais. Apaixonada por resgates e cuidados especiais 🐾',
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Pinheiros',
@@ -45,7 +45,7 @@ async function seed() {
         name: 'Carlos Eduardo',
         username: 'carlos_tutor',
         bio: 'Tutor do Max e do Pipoca. Defensor da adoção responsável ❤️',
-        avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+        avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
         city: 'Rio de Janeiro',
         state: 'RJ',
         neighborhood: 'Copacabana',
@@ -54,6 +54,7 @@ async function seed() {
         account_type: 'tutor',
         is_verified: false,
       },
+
     ];
 
     for (const u of users) {
@@ -134,7 +135,7 @@ async function seed() {
       },
       {
         id: 'post_pet_03',
-        user_id: 'usr_ana_01',
+        user_id: 'usr_alice_01',
         type: 'resgatado',
         content: '✨ Final feliz! Resgatamos este cãozinho assustado na Marginal Pinheiros hoje cedo. Já passou por consulta veterinária e agora está descansando e bem alimentado.',
         city: 'São Paulo',
@@ -193,7 +194,7 @@ async function seed() {
       `INSERT INTO conversations (id, user1_id, user2_id, last_message, last_time)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (id) DO UPDATE SET last_message = EXCLUDED.last_message, last_time = EXCLUDED.last_time`,
-      [convId, 'usr_ana_01', 'usr_ong_patas', 'Olá! Vi o Thor no feed de adoção e gostaria de saber mais!', '10:30']
+      [convId, 'usr_alice_01', 'usr_ong_patas', 'Olá! Vi o Thor no feed de adoção e gostaria de saber mais!', '10:30']
     );
 
     await db.query(
@@ -203,14 +204,14 @@ async function seed() {
        ($5, $6, $7, $8)
        ON CONFLICT (id) DO NOTHING`,
       [
-        'msg_demo_01', convId, 'usr_ana_01', 'Olá! Vi o Thor no feed de adoção e gostaria de saber mais!',
-        'msg_demo_02', convId, 'usr_ong_patas', 'Olá Ana! O Thor está disponível sim! Você tem outros animais em casa?'
+        'msg_demo_01', convId, 'usr_alice_01', 'Olá! Vi o Thor no feed de adoção e gostaria de saber mais!',
+        'msg_demo_02', convId, 'usr_ong_patas', 'Olá alice! O Thor está disponível sim! Você tem outros animais em casa?'
       ]
     );
 
 
     console.log('✅ Base de demonstração populada com sucesso!');
-    console.log('👤 Usuário de teste: ana@petx.com (Senha: 123456)');
+    console.log('👤 Usuário de teste: alice@petx.com (Senha: 123456)');
     process.exit(0);
   } catch (err) {
     console.error('❌ Erro ao popular banco de dados:', err);

@@ -91,7 +91,7 @@ export interface MockNotification {
 
 // Chaves de Armazenamento
 const STORAGE_KEYS = {
-  INITIALIZED: '@petx_demo:initialized_v2',
+  INITIALIZED: '@petx_demo:initialized_v4',
   CURRENT_USER_ID: '@petx_demo:current_user_id',
   USERS: '@petx_demo:users',
   PROFILES: '@petx_demo:profiles',
@@ -102,19 +102,19 @@ const STORAGE_KEYS = {
 
 // Dados Iniciais Ricos para Demonstração
 const INITIAL_USERS: MockUser[] = [
-  { id: 'usr_ana_01', email: 'ana@petx.com' },
+  { id: 'usr_alice_01', email: 'alice@petx.com' },
   { id: 'usr_ong_patas', email: 'contato@ongpatas.org' },
   { id: 'usr_carlos_02', email: 'carlos@petx.com' },
 ];
 
 const INITIAL_PROFILES: MockProfile[] = [
   {
-    id: 'prof_usr_ana_01',
-    user_id: 'usr_ana_01',
-    name: 'Ana Clara',
-    username: '@anaclara.vet',
+    id: 'prof_usr_alice_01',
+    user_id: 'usr_alice_01',
+    name: 'Alice',
+    username: '@alice.vet',
     bio: 'Veterinária e protetora de animais. Apaixonada por resgates e cuidados especiais 🐾',
-    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
     city: 'São Paulo',
     state: 'SP',
     neighborhood: 'Pinheiros',
@@ -144,7 +144,7 @@ const INITIAL_PROFILES: MockProfile[] = [
     name: 'Carlos Eduardo',
     username: '@carlos_tutor',
     bio: 'Tutor do Max e do Pipoca. Defensor da adoção responsável ❤️',
-    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     city: 'Rio de Janeiro',
     state: 'RJ',
     neighborhood: 'Copacabana',
@@ -154,6 +154,7 @@ const INITIAL_PROFILES: MockProfile[] = [
     is_verified: false,
   },
 ];
+
 
 const INITIAL_POSTS: MockPost[] = [
   {
@@ -180,15 +181,15 @@ const INITIAL_POSTS: MockPost[] = [
     comments: [
       {
         id: 'c1',
-        user: 'Ana Clara',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        user: 'Alice',
+        avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
         content: 'Ele é lindo demais! Já compartilhei com o grupo da clínica.',
         time: 'Há 2h',
       },
       {
         id: 'c2',
         user: 'Carlos Eduardo',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
         content: 'Que olhar doce! Tomara que encontre uma família logo!',
         time: 'Há 1h',
       },
@@ -202,7 +203,7 @@ const INITIAL_POSTS: MockPost[] = [
     id: 'post_02',
     userId: 'usr_carlos_02',
     user: 'Carlos Eduardo',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     type: 'perdido',
     content: '🚨 URGENTE: Gatinha "Luna" desapareceu próximo à Av. Nossa Senhora de Copacabana. É dócil, cinza com olhos verdes. Usa coleira vermelha com plaquinha. Por favor entrem em contato se a virem!',
     images: [
@@ -234,9 +235,9 @@ const INITIAL_POSTS: MockPost[] = [
   },
   {
     id: 'post_03',
-    userId: 'usr_ana_01',
-    user: 'Ana Clara',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    userId: 'usr_alice_01',
+    user: 'Alice',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
     type: 'encontrado',
     content: '✨ Final feliz! Resgatamos este cãozinho assustado na Marginal Pinheiros hoje cedo. Já passou por consulta veterinária e agora está descansando e bem alimentado.',
     images: [
@@ -289,7 +290,7 @@ const INITIAL_POSTS: MockPost[] = [
 const INITIAL_CONVERSATIONS: MockConversation[] = [
   {
     id: 'conv_01',
-    user1_id: 'usr_ana_01',
+    user1_id: 'usr_alice_01',
     user2_id: 'usr_ong_patas',
     userName: 'ONG Patas Amigas',
     userAvatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
@@ -299,8 +300,8 @@ const INITIAL_CONVERSATIONS: MockConversation[] = [
     messages: [
       {
         id: 'm1',
-        sender_id: 'usr_ana_01',
-        sender: 'Ana Clara',
+        sender_id: 'usr_alice_01',
+        sender: 'Alice',
         text: 'Olá! Vi a publicação do Thor no feed de adoção e gostaria de saber mais.',
         timestamp: '10:30',
         isUser: true,
@@ -320,7 +321,7 @@ const INITIAL_CONVERSATIONS: MockConversation[] = [
 const INITIAL_NOTIFICATIONS: MockNotification[] = [
   {
     id: 'notif_01',
-    user_id: 'usr_ana_01',
+    user_id: 'usr_alice_01',
     type: 'message',
     sender_name: 'ONG Patas Amigas',
     sender_avatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
@@ -330,17 +331,18 @@ const INITIAL_NOTIFICATIONS: MockNotification[] = [
   },
   {
     id: 'notif_02',
-    user_id: 'usr_ana_01',
+    user_id: 'usr_alice_01',
     type: 'like',
     sender_name: 'Carlos Eduardo',
-    sender_avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    sender_avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     text: 'curtiu seu resgate na Marginal Pinheiros',
     timestamp: 'Há 2h',
     is_read: false,
   },
+
   {
     id: 'notif_03',
-    user_id: 'usr_ana_01',
+    user_id: 'usr_alice_01',
     type: 'alert',
     sender_name: 'Pet-X Alerta',
     sender_avatar: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80',
@@ -434,7 +436,7 @@ export async function handleMockApiRequest<T = any>(
         name: cleanName || 'Visitante Pet-X',
         username: `@${namePart.toLowerCase()}`,
         bio: 'Adoro pets! Explorando o aplicativo Pet-X 🐾',
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+        avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Centro',
@@ -495,7 +497,7 @@ export async function handleMockApiRequest<T = any>(
       name: body.name || email.split('@')[0],
       username: body.username || `@${(body.name || email.split('@')[0]).toLowerCase().replace(/\s+/g, '')}`,
       bio: 'Novo tutor na comunidade Pet-X 🐶🐱',
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
       city: body.city || 'São Paulo',
       state: body.state || 'SP',
       neighborhood: '',
@@ -517,7 +519,7 @@ export async function handleMockApiRequest<T = any>(
 
   // 3. AUTH: ME
   if (path === '/api/auth/me' && method === 'GET') {
-    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_ana_01';
+    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_alice_01';
     const users = await getStorageItem<MockUser[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
     const profiles = await getStorageItem<MockProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_PROFILES);
 
@@ -529,7 +531,7 @@ export async function handleMockApiRequest<T = any>(
 
   // 4. AUTH: UPDATE PROFILE
   if (path === '/api/auth/profile' && method === 'PUT') {
-    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_ana_01';
+    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_alice_01';
     const profiles = await getStorageItem<MockProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_PROFILES);
 
     let updatedProfile: MockProfile | undefined;
@@ -581,42 +583,59 @@ export async function handleMockApiRequest<T = any>(
 
     let filtered = [...posts];
 
-    if (cityParam) {
-      filtered = filtered.filter((p) => p.city?.toLowerCase() === cityParam.toLowerCase());
-    }
-    if (stateParam) {
-      filtered = filtered.filter((p) => p.state?.toLowerCase() === stateParam.toLowerCase());
-    }
-
-    if (latParam && lngParam && radiusParam) {
+    // Se temos coordenadas (GPS ou cidade pré-definida com lat/lng):
+    if (latParam && lngParam) {
       const uLat = parseFloat(latParam);
       const uLng = parseFloat(lngParam);
-      const maxRadius = parseFloat(radiusParam);
 
-      filtered = filtered
-        .map((p) => {
-          if (p.latitude && p.longitude) {
-            const distance = calculateDistanceKm(uLat, uLng, p.latitude, p.longitude);
-            return { ...p, distanceKm: distance };
-          }
-          return p;
-        })
-        .filter((p) => {
-          if ((p as any).distanceKm !== undefined) {
-            return (p as any).distanceKm <= maxRadius;
-          }
-          return true;
-        });
+      // 1. Calcula a distância real para cada post que possui coordenadas
+      filtered = filtered.map((p) => {
+        if (p.latitude !== null && p.latitude !== undefined && p.longitude !== null && p.longitude !== undefined) {
+          const distance = calculateDistanceKm(uLat, uLng, Number(p.latitude), Number(p.longitude));
+          return { ...p, distanceKm: distance };
+        }
+        return p;
+      });
+
+      // 2. Se houver raio de proximidade selecionado (ex: 5km, 15km, 30km, 50km)
+      if (radiusParam) {
+        const maxRadius = parseFloat(radiusParam);
+        const withinRadius = filtered.filter(
+          (p) => (p as any).distanceKm !== undefined && (p as any).distanceKm <= maxRadius
+        );
+
+        if (withinRadius.length > 0) {
+          filtered = withinRadius;
+        }
+        // Se nenhum post de exemplo estiver dentro do raio (ex: usuário testando de uma cidade distante),
+        // mantemos os posts ordenados por proximidade com as tags de distância para não quebrar a demonstração.
+      }
+
+      // 3. Ordena os posts pelo mais próximo de onde o usuário está!
+      filtered.sort((a, b) => {
+        const distA = (a as any).distanceKm ?? 99999;
+        const distB = (b as any).distanceKm ?? 99999;
+        return distA - distB;
+      });
+    } else {
+      // Sem coordenadas GPS: filtro textual por cidade/estado
+      if (cityParam) {
+        filtered = filtered.filter((p) => p.city?.toLowerCase() === cityParam.toLowerCase());
+      }
+      if (stateParam) {
+        filtered = filtered.filter((p) => p.state?.toLowerCase() === stateParam.toLowerCase());
+      }
+      // Ordena pelos mais recentes
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    // Ordenar pelos mais recentes
-    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return filtered as T;
   }
 
+
   // 7. POSTS: CREATE POST
   if (path === '/api/posts' && method === 'POST') {
-    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_ana_01';
+    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_alice_01';
     const profiles = await getStorageItem<MockProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_PROFILES);
     const posts = await getStorageItem<MockPost[]>(STORAGE_KEYS.POSTS, INITIAL_POSTS);
 
@@ -675,7 +694,7 @@ export async function handleMockApiRequest<T = any>(
   // 9. POSTS: COMMENT
   if (path.match(/\/api\/posts\/.+\/comments/) && method === 'POST') {
     const postId = path.split('/')[3];
-    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_ana_01';
+    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_alice_01';
     const profiles = await getStorageItem<MockProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_PROFILES);
     const posts = await getStorageItem<MockPost[]>(STORAGE_KEYS.POSTS, INITIAL_POSTS);
 
@@ -740,7 +759,7 @@ export async function handleMockApiRequest<T = any>(
 
   // 14. CONVERSATIONS: CREATE / OPEN
   if (path === '/api/conversations' && method === 'POST') {
-    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_ana_01';
+    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_alice_01';
     const recipientId = body.recipientId;
     const profiles = await getStorageItem<MockProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_PROFILES);
     const convs = await getStorageItem<MockConversation[]>(STORAGE_KEYS.CONVERSATIONS, INITIAL_CONVERSATIONS);
@@ -786,7 +805,7 @@ export async function handleMockApiRequest<T = any>(
   // 16. CONVERSATIONS: SEND MESSAGE
   if (path.match(/\/api\/conversations\/.+\/messages/) && method === 'POST') {
     const convId = path.split('/')[3];
-    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_ana_01';
+    const currentUserId = (await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID)) || 'usr_alice_01';
     const convs = await getStorageItem<MockConversation[]>(STORAGE_KEYS.CONVERSATIONS, INITIAL_CONVERSATIONS);
 
     const now = new Date();

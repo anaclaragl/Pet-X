@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { StyleSheet, TextInput, Pressable, View, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/hooks/use-theme';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -49,7 +49,7 @@ export default function LoginScreen() {
 
         <View style={[styles.demoBanner, { backgroundColor: 'rgba(255, 107, 74, 0.1)', borderColor: theme.brand }]}>
           <ThemedText style={[styles.demoBannerText, { color: theme.brand }]}>
-            ✨ Modo Demonstração: digite qualquer e-mail e senha para explorar o app sem cadastro prévio!
+            Modo Demonstração: digite qualquer e-mail e senha para explorar o app sem cadastro prévio!
           </ThemedText>
         </View>
 
@@ -70,12 +70,12 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           secureTextEntry
         />
-        
-        <Pressable 
+
+        <Pressable
           style={({ pressed }) => [
-            styles.button, 
+            styles.button,
             { backgroundColor: theme.brand, opacity: pressed || loading ? 0.8 : 1 }
-          ]} 
+          ]}
           onPress={handleLogin}
           disabled={loading}
         >
@@ -84,25 +84,6 @@ export default function LoginScreen() {
           ) : (
             <ThemedText style={styles.buttonText}>Entrar</ThemedText>
           )}
-        </Pressable>
-
-        <Pressable 
-          style={({ pressed }) => [
-            styles.demoButton, 
-            { borderColor: theme.brand, opacity: pressed || loading ? 0.7 : 1 }
-          ]} 
-          onPress={() => {
-            setEmail('ana@petx.com');
-            setPassword('123456');
-            signIn({ email: 'ana@petx.com', password: '123' }).then((res) => {
-              if (!res.error) router.replace('/(tabs)');
-            });
-          }}
-          disabled={loading}
-        >
-          <ThemedText style={[styles.demoButtonText, { color: theme.brand }]}>
-            ⚡ Acesso Rápido (Entrar como Visitante)
-          </ThemedText>
         </Pressable>
 
         <Pressable onPress={() => router.push('/register')} style={styles.linkContainer}>

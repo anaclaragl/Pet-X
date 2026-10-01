@@ -37,8 +37,11 @@ const upload = multer({
       cb(new Error('Apenas arquivos de imagem são permitidos.'));
     }
   },
+});
+
 app.set('trust proxy', 1);
 app.use(cors());
+
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(uploadsDir));
 
