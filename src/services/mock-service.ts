@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculateDistanceKm } from './location';
+import { ALICE_AVATAR, BASE_USER_AVATAR } from '@/constants/avatars';
 
 // Tipos internos do Mock Service
 export interface MockUser {
@@ -91,7 +92,7 @@ export interface MockNotification {
 
 // Chaves de Armazenamento
 const STORAGE_KEYS = {
-  INITIALIZED: '@petx_demo:initialized_v4',
+  INITIALIZED: '@petx_demo:initialized_v8',
   CURRENT_USER_ID: '@petx_demo:current_user_id',
   USERS: '@petx_demo:users',
   PROFILES: '@petx_demo:profiles',
@@ -113,8 +114,8 @@ const INITIAL_PROFILES: MockProfile[] = [
     user_id: 'usr_alice_01',
     name: 'Alice',
     username: '@alice.vet',
-    bio: 'Veterinária e protetora de animais. Apaixonada por resgates e cuidados especiais 🐾',
-    avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+    bio: 'Veterinária e protetora de animais. Apaixonada por resgates e cuidados especiais',
+    avatar_url: ALICE_AVATAR,
     city: 'São Paulo',
     state: 'SP',
     neighborhood: 'Pinheiros',
@@ -128,7 +129,7 @@ const INITIAL_PROFILES: MockProfile[] = [
     user_id: 'usr_ong_patas',
     name: 'ONG Patas Amigas',
     username: '@ongpatasamigas',
-    bio: 'Resgatamos e reabilitamos animais em situação de risco. Ajude-nos a encontrar um lar! 🐶🐱',
+    bio: 'Resgatamos e reabilitamos animais em situação de risco. Ajude-nos a encontrar um lar!',
     avatar_url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
     city: 'São Paulo',
     state: 'SP',
@@ -143,7 +144,7 @@ const INITIAL_PROFILES: MockProfile[] = [
     user_id: 'usr_carlos_02',
     name: 'Carlos Eduardo',
     username: '@carlos_tutor',
-    bio: 'Tutor do Max e do Pipoca. Defensor da adoção responsável ❤️',
+    bio: 'Tutor do Max e do Pipoca. Defensor da adoção responsável',
     avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     city: 'Rio de Janeiro',
     state: 'RJ',
@@ -163,7 +164,7 @@ const INITIAL_POSTS: MockPost[] = [
     user: 'ONG Patas Amigas',
     avatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
     type: 'ong',
-    content: '🐾 Thor procura um lar com muito amor! É um filhote de 8 meses, porte médio, já castrado e com vacinas em dia. Super dócil com crianças e outros cães.',
+    content: 'Thor procura um lar com muito amor! É um filhote de 8 meses, porte médio, já castrado e com vacinas em dia. Super dócil com crianças e outros cães.',
     images: [
       'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80',
       'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800&q=80',
@@ -182,7 +183,7 @@ const INITIAL_POSTS: MockPost[] = [
       {
         id: 'c1',
         user: 'Alice',
-        avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+        avatar: ALICE_AVATAR,
         content: 'Ele é lindo demais! Já compartilhei com o grupo da clínica.',
         time: 'Há 2h',
       },
@@ -205,7 +206,7 @@ const INITIAL_POSTS: MockPost[] = [
     user: 'Carlos Eduardo',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     type: 'perdido',
-    content: '🚨 URGENTE: Gatinha "Luna" desapareceu próximo à Av. Nossa Senhora de Copacabana. É dócil, cinza com olhos verdes. Usa coleira vermelha com plaquinha. Por favor entrem em contato se a virem!',
+    content: 'URGENTE: Gatinha "Luna" desapareceu próximo à Av. Nossa Senhora de Copacabana. É dócil, cinza com olhos verdes. Usa coleira vermelha com plaquinha. Por favor entrem em contato se a virem!',
     images: [
       'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800&q=80',
     ],
@@ -237,9 +238,9 @@ const INITIAL_POSTS: MockPost[] = [
     id: 'post_03',
     userId: 'usr_alice_01',
     user: 'Alice',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+    avatar: ALICE_AVATAR,
     type: 'encontrado',
-    content: '✨ Final feliz! Resgatamos este cãozinho assustado na Marginal Pinheiros hoje cedo. Já passou por consulta veterinária e agora está descansando e bem alimentado.',
+    content: 'Final feliz! Resgatamos este cãozinho assustado na Marginal Pinheiros hoje cedo. Já passou por consulta veterinária e agora está descansando e bem alimentado.',
     images: [
       'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80',
     ],
@@ -265,7 +266,7 @@ const INITIAL_POSTS: MockPost[] = [
     user: 'ONG Patas Amigas',
     avatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
     type: 'ong',
-    content: '🐱 Duplinha inseparável! Fred & Mel têm 3 meses, vermifugados e cheios de energia. Adoção conjunta prioritária para lares telados e seguros.',
+    content: 'Duplinha inseparável! Fred & Mel têm 3 meses, vermifugados e cheios de energia. Adoção conjunta prioritária para lares telados e seguros.',
     images: [
       'https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=800&q=80',
     ],
@@ -383,12 +384,29 @@ async function ensureInitialized() {
   }
 }
 
+// Helper de normalização para garantir que avatares nunca fiquem vazios ou com links obsoletos
+function normalizeProfile(p: MockProfile): MockProfile {
+  if (p.user_id === 'usr_alice_01') {
+    return { ...p, avatar_url: ALICE_AVATAR };
+  }
+  if (!p.avatar_url || p.avatar_url === '' || p.avatar_url.includes('photo-1580489944761') || p.avatar_url.includes('photo-1535713875002') || p.avatar_url.includes('photo-1544005313-94ddf0286df2') || p.avatar_url.includes('photo-1494790108377')) {
+    if (p.user_id !== 'usr_ong_patas' && p.user_id !== 'usr_carlos_02') {
+      return { ...p, avatar_url: BASE_USER_AVATAR };
+    }
+  }
+  return p;
+}
+
 // Helpers de leitura/escrita
 async function getStorageItem<T>(key: string, defaultValue: T): Promise<T> {
   await ensureInitialized();
   try {
     const item = await AsyncStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
+    const parsed = item ? JSON.parse(item) : defaultValue;
+    if (key === STORAGE_KEYS.PROFILES && Array.isArray(parsed)) {
+      return parsed.map(normalizeProfile) as unknown as T;
+    }
+    return parsed;
   } catch {
     return defaultValue;
   }
@@ -435,8 +453,8 @@ export async function handleMockApiRequest<T = any>(
         user_id: newUserId,
         name: cleanName || 'Visitante Pet-X',
         username: `@${namePart.toLowerCase()}`,
-        bio: 'Adoro pets! Explorando o aplicativo Pet-X 🐾',
-        avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+        bio: 'Adoro pets! Explorando o aplicativo Pet-X',
+        avatar_url: BASE_USER_AVATAR,
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Centro',
@@ -459,7 +477,7 @@ export async function handleMockApiRequest<T = any>(
           name: user.email.split('@')[0],
           username: `@${user.email.split('@')[0].toLowerCase()}`,
           bio: 'Tutor de pets',
-          avatar_url: '',
+          avatar_url: BASE_USER_AVATAR,
           city: 'São Paulo',
           state: 'SP',
           neighborhood: '',
@@ -469,6 +487,9 @@ export async function handleMockApiRequest<T = any>(
           is_verified: false,
         };
         profiles.push(profile);
+        await setStorageItem(STORAGE_KEYS.PROFILES, profiles);
+      } else if (!profile.avatar_url) {
+        profile.avatar_url = BASE_USER_AVATAR;
         await setStorageItem(STORAGE_KEYS.PROFILES, profiles);
       }
     }
@@ -496,8 +517,8 @@ export async function handleMockApiRequest<T = any>(
       user_id: newUserId,
       name: body.name || email.split('@')[0],
       username: body.username || `@${(body.name || email.split('@')[0]).toLowerCase().replace(/\s+/g, '')}`,
-      bio: 'Novo tutor na comunidade Pet-X 🐶🐱',
-      avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+      bio: 'Novo tutor na comunidade Pet-X',
+      avatar_url: body.avatarUrl || BASE_USER_AVATAR,
       city: body.city || 'São Paulo',
       state: body.state || 'SP',
       neighborhood: '',
@@ -524,7 +545,8 @@ export async function handleMockApiRequest<T = any>(
     const profiles = await getStorageItem<MockProfile[]>(STORAGE_KEYS.PROFILES, INITIAL_PROFILES);
 
     const user = users.find((u) => u.id === currentUserId) || users[0];
-    const profile = profiles.find((p) => p.user_id === user.id) || profiles[0];
+    const rawProfile = profiles.find((p) => p.user_id === user.id) || profiles[0];
+    const profile = normalizeProfile(rawProfile);
 
     return { user, profile } as T;
   }
@@ -565,7 +587,7 @@ export async function handleMockApiRequest<T = any>(
     const userPosts = posts.filter((p) => p.userId === targetUserId);
 
     return {
-      profile: profile || null,
+      profile: profile ? normalizeProfile(profile) : null,
       posts: userPosts,
     } as T;
   }

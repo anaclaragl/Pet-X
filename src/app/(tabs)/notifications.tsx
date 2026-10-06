@@ -1,11 +1,10 @@
-import React from 'react';
-import { StyleSheet, View, FlatList, Image, Pressable } from 'react-native';
-import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { NotificationItem, useNotifications } from '@/context/NotificationsContext';
 import { useTheme } from '@/hooks/use-theme';
-import { useNotifications, NotificationItem } from '@/context/NotificationsContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NotificationsScreen() {

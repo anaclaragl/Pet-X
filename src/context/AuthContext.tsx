@@ -1,4 +1,5 @@
 import { apiFetch, isPostgresApiConfigured, uploadImageToPostgres } from '@/lib/api';
+import { BASE_USER_AVATAR } from '@/constants/avatars';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -106,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   username: res.profile.username,
                   accountType: res.profile.account_type || 'tutor',
                   bio: res.profile.bio || '',
-                  avatarUrl: res.profile.avatar_url || '',
+                  avatarUrl: res.profile.avatar_url || BASE_USER_AVATAR,
                   city: res.profile.city || '',
                   state: res.profile.state || '',
                   isVerified: res.profile.account_type === 'ong',
@@ -156,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: res.profile.username,
             accountType: res.profile.account_type || accountType,
             bio: res.profile.bio || '',
-            avatarUrl: res.profile.avatar_url || '',
+            avatarUrl: res.profile.avatar_url || BASE_USER_AVATAR,
             city: city || res.profile.city || '',
             state: state || res.profile.state || '',
             isVerified: accountType === 'ong',
@@ -188,7 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             username: res.profile.username,
             accountType: res.profile.account_type || 'tutor',
             bio: res.profile.bio || '',
-            avatarUrl: res.profile.avatar_url || '',
+            avatarUrl: res.profile.avatar_url || BASE_USER_AVATAR,
             city: res.profile.city || '',
             state: res.profile.state || '',
             isVerified: res.profile.account_type === 'ong',

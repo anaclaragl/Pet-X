@@ -23,6 +23,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePosts, Post } from '@/context/PostsContext';
 import { useChat } from '@/context/ChatContext';
 import { apiFetch } from '@/lib/api';
+import { BASE_USER_AVATAR } from '@/constants/avatars';
 
 import { DesktopSidebar } from '@/components/desktop-sidebar';
 import { useWindowDimensions } from 'react-native';
@@ -101,7 +102,7 @@ export default function UserProfileScreen() {
       const convId = await startOrOpenChat(
         id,
         profileData.name || 'Usuário',
-        profileData.avatar_url || 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&q=80'
+        profileData.avatar_url || BASE_USER_AVATAR
       );
       router.push(`/chat/${convId}` as any);
     } catch (e) {
@@ -141,7 +142,7 @@ export default function UserProfileScreen() {
 
   const avatarUrl =
     profileData?.avatar_url ||
-    'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&q=80';
+    BASE_USER_AVATAR;
 
   const displayName = profileData?.name || 'Usuário';
   const usernameStr = profileData?.username || `@${displayName.toLowerCase().replace(/\s+/g, '')}`;

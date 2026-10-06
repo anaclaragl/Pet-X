@@ -19,6 +19,15 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// Copy avatar_base if available
+const sourceAvatar = path.join(__dirname, '../assets/images/avatar_base.jpg');
+const destAvatar = path.join(uploadsDir, 'avatar_base.jpg');
+if (fs.existsSync(sourceAvatar) && !fs.existsSync(destAvatar)) {
+  try {
+    fs.copyFileSync(sourceAvatar, destAvatar);
+  } catch (e) {}
+}
+
 // Multer Storage for image uploads
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -116,7 +125,7 @@ app.post('/api/auth/register', async (req, res) => {
     const generatedUsername = await username_generator(name);
     await db.query(
       'INSERT INTO profiles (id, user_id, name, username, bio, avatar_url, city, state, account_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-      [profileId, userId, name, generatedUsername, bio || '', avatarUrl || '', city || '', state || '', accountType || 'tutor']
+      [profileId, userId, name, generatedUsername, bio || '', avatarUrl || '/uploads/avatar_base.jpg', city || '', state || '', accountType || 'tutor']
     );
 
     const token = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '30d' });
@@ -143,10 +152,12 @@ app.post('/api/auth/login', async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) return res.status(400).json({ error: 'Senha incorreta' });
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
-    const profileRes = await db.query('SELECT * FROM profiles WHERE user_id = $1', [user.id]);
+    const profile = profileRes.rows[0];
+    if (profile && !profile.avatar_url) {
+      profile.avatar_url = '/uploads/avatar_base.jpg';
+    }
 
-    res.json({ token, user: { id: user.id, email: user.email }, profile: profileRes.rows[0] });
+    res.json({ token, user: { id: user.id, email: user.email }, profile });
   } catch (err) {
     console.error('Erro no login:', err);
     res.status(500).json({ error: 'Erro interno ao realizar login' });

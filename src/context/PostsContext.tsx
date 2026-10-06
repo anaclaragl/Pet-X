@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch, uploadImageToPostgres } from '@/lib/api';
 import { getCurrentCoordinates, reverseGeocode, calculateDistanceKm } from '@/services/location';
 import { formatRelativeTime } from '@/utils/date';
+import { BASE_USER_AVATAR } from '@/constants/avatars';
 
 export type PostType = 'perdido' | 'encontrado' | 'ong' | 'outro';
 
@@ -138,7 +139,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         name: authProfile.name,
         username: authProfile.username,
         bio: authProfile.bio || '',
-        avatar: authProfile.avatarUrl || '',
+        avatar: authProfile.avatarUrl || BASE_USER_AVATAR,
         city: authProfile.city || '',
         state: authProfile.state || '',
         neighborhood: (authProfile as any).neighborhood || '',

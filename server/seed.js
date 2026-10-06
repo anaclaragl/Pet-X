@@ -2,8 +2,6 @@ const bcrypt = require('bcryptjs');
 const db = require('./db');
 
 async function seed() {
-  console.log('🌱 Populando o banco de dados do Pet-X com dados de teste/demonstração...');
-
   try {
     const passwordHash = await bcrypt.hash('123456', 10);
 
@@ -14,8 +12,8 @@ async function seed() {
         email: 'alice@petx.com',
         name: 'Alice',
         username: 'alice.vet',
-        bio: 'Veterinária e protetora de animais. Apaixonada por resgates e cuidados especiais 🐾',
-        avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+        bio: 'Veterinária e protetora de animais. Apaixonada por resgates e cuidados especiais',
+        avatar_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=400&q=80',
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Pinheiros',
@@ -29,7 +27,7 @@ async function seed() {
         email: 'contato@ongpatas.org',
         name: 'ONG Patas Amigas',
         username: 'ongpatasamigas',
-        bio: 'Resgatamos e reabilitamos animais em situação de risco. Ajude-nos a encontrar um lar! 🐶🐱',
+        bio: 'Resgatamos e reabilitamos animais em situação de risco. Ajude-nos a encontrar um lar!',
         avatar_url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
         city: 'São Paulo',
         state: 'SP',
@@ -44,7 +42,7 @@ async function seed() {
         email: 'carlos@petx.com',
         name: 'Carlos Eduardo',
         username: 'carlos_tutor',
-        bio: 'Tutor do Max e do Pipoca. Defensor da adoção responsável ❤️',
+        bio: 'Tutor do Max e do Pipoca. Defensor da adoção responsável',
         avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
         city: 'Rio de Janeiro',
         state: 'RJ',
@@ -104,7 +102,7 @@ async function seed() {
         id: 'post_pet_01',
         user_id: 'usr_ong_patas',
         type: 'adocao',
-        content: '🐾 Thor procura um lar com muito amor! É um filhotão de 8 meses, porte médio, já castrado e vacinado. Super dócil com crianças e outros cães.',
+        content: 'Thor procura um lar com muito amor! É um filhotão de 8 meses, porte médio, já castrado e vacinado. Super dócil com crianças e outros cães.',
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Vila Mariana',
@@ -121,7 +119,7 @@ async function seed() {
         id: 'post_pet_02',
         user_id: 'usr_carlos_02',
         type: 'perdido',
-        content: '🚨 URGENTE: Gatinha "Luna" desapareceu próximo à Av. Nossa Senhora de Copacabana. É dócil, cinza com manchas brancas, tem coleira vermelha com plaquinha. Por favor compartilhem!',
+        content: 'URGENTE: Gatinha "Luna" desapareceu próximo à Av. Nossa Senhora de Copacabana. É dócil, cinza com manchas brancas, tem coleira vermelha com plaquinha. Por favor compartilhem!',
         city: 'Rio de Janeiro',
         state: 'RJ',
         neighborhood: 'Copacabana',
@@ -137,7 +135,7 @@ async function seed() {
         id: 'post_pet_03',
         user_id: 'usr_alice_01',
         type: 'resgatado',
-        content: '✨ Final feliz! Resgatamos este cãozinho assustado na Marginal Pinheiros hoje cedo. Já passou por consulta veterinária e agora está descansando e bem alimentado.',
+        content: 'Final feliz! Resgatamos este cãozinho assustado na Marginal Pinheiros hoje cedo. Já passou por consulta veterinária e agora está descansando e bem alimentado.',
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Pinheiros',
@@ -153,7 +151,7 @@ async function seed() {
         id: 'post_pet_04',
         user_id: 'usr_ong_patas',
         type: 'adocao',
-        content: '🐱 Duplinha inseparável! Fred & Mel têm 3 meses, vermifugados e muito brincalhões. Adoção conjunta preferencial para apartamentos telados.',
+        content: 'Duplinha inseparável! Fred & Mel têm 3 meses, vermifugados e muito brincalhões. Adoção conjunta preferencial para apartamentos telados.',
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Moema',
@@ -210,11 +208,11 @@ async function seed() {
     );
 
 
-    console.log('✅ Base de demonstração populada com sucesso!');
-    console.log('👤 Usuário de teste: alice@petx.com (Senha: 123456)');
+    console.log('Base de demonstração populada com sucesso!');
+    console.log('Usuário de teste: alice@petx.com (Senha: 123456)');
     process.exit(0);
   } catch (err) {
-    console.error('❌ Erro ao popular banco de dados:', err);
+    console.error('Erro ao popular banco de dados:', err);
     process.exit(1);
   }
 }

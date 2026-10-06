@@ -13,6 +13,7 @@ import { useRef, useState } from 'react';
 import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View, Share, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DesktopSidebar } from '@/components/desktop-sidebar';
+import { BASE_USER_AVATAR } from '@/constants/avatars';
 
 export default function PostDetailsScreen() {
   const theme = useTheme();
@@ -69,7 +70,7 @@ export default function PostDetailsScreen() {
       const convId = await startOrOpenChat(
         post.userId,
         post.user,
-        post.avatar || 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&q=80'
+        post.avatar || BASE_USER_AVATAR
       );
 
       router.push(`/chat/${convId}` as any);
