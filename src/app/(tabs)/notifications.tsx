@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { BASE_USER_AVATAR } from '@/constants/avatars';
 import { NotificationItem, useNotifications } from '@/context/NotificationsContext';
 import { useTheme } from '@/hooks/use-theme';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -71,33 +72,47 @@ export default function NotificationsScreen() {
           <FlatList
             data={notifications}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <Pressable
-                style={[
-                  styles.itemContainer,
-                  {
-                    borderBottomColor: theme.border,
-                    backgroundColor: item.isRead ? theme.background : theme.backgroundElement,
-                  },
-                ]}
-                onPress={() => handleNotificationPress(item)}
-              >
-                <View style={styles.iconContainer}>
-                  {getNotificationIcon(item.type)}
-                </View>
-                <Image source={{ uri: item.userAvatar }} style={styles.avatar} resizeMode="cover" />
-                <View style={styles.contentContainer}>
-                  <ThemedText style={styles.itemText}>
-                    <ThemedText style={{ fontWeight: '700' }}>{item.user} </ThemedText>
-                    {item.text}
-                  </ThemedText>
-                  <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
-                    {item.timestamp}
-                  </ThemedText>
-                </View>
-                {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: theme.brand }]} />}
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const displayName = item.user || (item as any).sender_name || '';
+              const avatarUri = item.userAvatar || (item as any).sender_avatar || BASE_USER_AVATAR;
+
+              return (
+                <Pressable
+                  style={[
+                    styles.itemContainer,
+                    {
+                      borderBottomColor: theme.border,
+                      backgroundColor: item.isRead ? theme.background : theme.backgroundElement,
+                    },
+                  ]}
+                  onPress={() => handleNotificationPress(item)}
+                >
+                  <View style={styles.iconContainer}>
+                    {getNotificationIcon(item.type)}
+                  </View>
+                  {avatarUri ? (
+                    <Image
+                      source={{ uri: avatarUri }}
+                      style={styles.avatar}
+                      resizeMode="cover"
+                      defaultSource={{ uri: BASE_USER_AVATAR }}
+                    />
+                  ) : null}
+                  <View style={styles.contentContainer}>
+                    <ThemedText style={styles.itemText}>
+                      {displayName ? (
+                        <ThemedText style={{ fontWeight: '700' }}>{displayName} </ThemedText>
+                      ) : null}
+                      {item.text}
+                    </ThemedText>
+                    <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
+                      {item.timestamp}
+                    </ThemedText>
+                  </View>
+                  {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: theme.brand }]} />}
+                </Pressable>
+              );
+            }}
           />
         )}
       </View>

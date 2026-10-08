@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Post, usePosts } from '@/context/PostsContext';
 import { useAuth } from '@/context/AuthContext';
 import { useChat } from '@/context/ChatContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
 import { PostOptionsMenuModal } from '@/components/post-options-modal';
@@ -19,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function FeedScreen() {
   const theme = useTheme();
   const { user: currentUser } = useAuth();
+  const { unreadCount } = useNotifications();
   const { 
     posts, 
     toggleLike, 
@@ -86,31 +88,58 @@ export default function FeedScreen() {
         <ThemedView style={[styles.header, { borderBottomColor: theme.border }]}>
           <ThemedText type="title" style={{ fontSize: 24, color: theme.text }}>Início</ThemedText>
 
-          {/* Location Selector Pill */}
-          <Pressable
-            style={({ pressed, hovered }: any) => [
-              styles.locationPickerBtn,
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-              hovered && { borderColor: theme.brand, backgroundColor: 'rgba(255, 107, 74, 0.08)' },
-              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
-            ]}
-            onPress={() => setLocationModalVisible(true)}
-          >
-            <MaterialIcons
-              name={activeLocation?.isGps ? "my-location" : "location-on"}
-              size={16}
-              color={theme.brand}
-            />
-            <ThemedText style={[styles.locationPickerText, { color: theme.text }]} numberOfLines={1}>
-              {locationButtonLabel}
-            </ThemedText>
-            {radiusBadgeLabel && (
-              <View style={[styles.radiusPill, { backgroundColor: theme.brand }]}>
-                <ThemedText style={styles.radiusPillText}>{radiusBadgeLabel}</ThemedText>
-              </View>
-            )}
-            <MaterialIcons name="keyboard-arrow-down" size={18} color={theme.textSecondary} />
-          </Pressable>
+          <View style={styles.headerRightActions}>
+            {/* Location Selector Pill */}
+            <Pressable
+              style={({ pressed, hovered }: any) => [
+                styles.locationPickerBtn,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+                hovered && { borderColor: theme.brand, backgroundColor: 'rgba(255, 107, 74, 0.08)' },
+                pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
+              ]}
+              onPress={() => setLocationModalVisible(true)}
+            >
+              <MaterialIcons
+                name={activeLocation?.isGps ? "my-location" : "location-on"}
+                size={16}
+                color={theme.brand}
+              />
+              <ThemedText style={[styles.locationPickerText, { color: theme.text }]} numberOfLines={1}>
+                {locationButtonLabel}
+              </ThemedText>
+              {radiusBadgeLabel && (
+                <View style={[styles.radiusPill, { backgroundColor: theme.brand }]}>
+                  <ThemedText style={styles.radiusPillText}>{radiusBadgeLabel}</ThemedText>
+                </View>
+              )}
+              <MaterialIcons name="keyboard-arrow-down" size={18} color={theme.textSecondary} />
+            </Pressable>
+
+            {/* Notification Bell Button */}
+            <Pressable
+              style={({ pressed, hovered }: any) => [
+                styles.notificationBtn,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+                hovered && { borderColor: theme.brand },
+                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
+              ]}
+              onPress={() => router.push('/(tabs)/notifications')}
+              accessibilityLabel="Notificações"
+            >
+              <MaterialIcons
+                name={unreadCount > 0 ? "notifications" : "notifications-none"}
+                size={21}
+                color={unreadCount > 0 ? theme.brand : theme.text}
+              />
+              {unreadCount > 0 && (
+                <View style={[styles.headerBadge, { backgroundColor: theme.brand }]}>
+                  <ThemedText style={styles.headerBadgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </ThemedText>
+                </View>
+              )}
+            </Pressable>
+          </View>
         </ThemedView>
 
         <FlatList
@@ -330,6 +359,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
   },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   locationPickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -338,10 +372,39 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     gap: 6,
-    maxWidth: 260,
+    maxWidth: 210,
     ...Platform.select({
       web: { cursor: 'pointer' },
     }),
+  },
+  notificationBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    ...Platform.select({
+      web: { cursor: 'pointer' },
+    }),
+  },
+  headerBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  headerBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 11,
   },
   locationPickerText: {
     fontSize: 13,

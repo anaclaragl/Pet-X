@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/api';
+import { BASE_USER_AVATAR } from '@/constants/avatars';
 
 export type NotificationType = 'like' | 'comment' | 'message' | 'alert';
 
@@ -41,9 +42,19 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       return;
     }
     try {
-      const data = await apiFetch<NotificationItem[]>('/api/notifications');
+      const data = await apiFetch<any[]>('/api/notifications');
       if (Array.isArray(data)) {
-        setNotifications(data);
+        const normalized: NotificationItem[] = data.map((item: any) => ({
+          id: String(item.id),
+          type: item.type || 'alert',
+          user: item.user || item.sender_name || 'Usuario',
+          userAvatar: item.userAvatar || item.sender_avatar || BASE_USER_AVATAR,
+          text: item.text || '',
+          targetId: item.targetId || item.target_id,
+          timestamp: item.timestamp || 'Agora',
+          isRead: Boolean(item.isRead !== undefined ? item.isRead : item.is_read),
+        }));
+        setNotifications(normalized);
       } else {
         setNotifications([]);
       }

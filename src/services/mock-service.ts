@@ -82,17 +82,21 @@ export interface MockNotification {
   id: string;
   user_id: string;
   type: 'like' | 'comment' | 'message' | 'alert';
+  user: string;
+  userAvatar: string;
   sender_name: string;
   sender_avatar: string;
   text: string;
+  targetId?: string;
   target_id?: string;
   timestamp: string;
+  isRead: boolean;
   is_read: boolean;
 }
 
 // Chaves de Armazenamento
 const STORAGE_KEYS = {
-  INITIALIZED: '@petx_demo:initialized_v8',
+  INITIALIZED: '@petx_demo:initialized_v9',
   CURRENT_USER_ID: '@petx_demo:current_user_id',
   USERS: '@petx_demo:users',
   PROFILES: '@petx_demo:profiles',
@@ -324,31 +328,60 @@ const INITIAL_NOTIFICATIONS: MockNotification[] = [
     id: 'notif_01',
     user_id: 'usr_alice_01',
     type: 'message',
+    user: 'ONG Patas Amigas',
+    userAvatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
     sender_name: 'ONG Patas Amigas',
     sender_avatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
-    text: 'respondeu à sua mensagem sobre o Thor',
-    timestamp: 'Há 15m',
+    text: 'respondeu a sua mensagem sobre o Thor',
+    targetId: 'conv_01',
+    target_id: 'conv_01',
+    timestamp: 'Ha 15m',
+    isRead: false,
     is_read: false,
   },
   {
     id: 'notif_02',
     user_id: 'usr_alice_01',
     type: 'like',
+    user: 'Carlos Eduardo',
+    userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     sender_name: 'Carlos Eduardo',
     sender_avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     text: 'curtiu seu resgate na Marginal Pinheiros',
-    timestamp: 'Há 2h',
+    targetId: 'post_03',
+    target_id: 'post_03',
+    timestamp: 'Ha 2h',
+    isRead: false,
     is_read: false,
   },
-
   {
     id: 'notif_03',
     user_id: 'usr_alice_01',
+    type: 'comment',
+    user: 'ONG Patas Amigas',
+    userAvatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
+    sender_name: 'ONG Patas Amigas',
+    sender_avatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
+    text: 'comentou: "Ele e lindo demais! Ja compartilhamos no grupo da clinica."',
+    targetId: 'post_03',
+    target_id: 'post_03',
+    timestamp: 'Ha 3h',
+    isRead: false,
+    is_read: false,
+  },
+  {
+    id: 'notif_04',
+    user_id: 'usr_alice_01',
     type: 'alert',
+    user: 'Pet-X Alerta',
+    userAvatar: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80',
     sender_name: 'Pet-X Alerta',
     sender_avatar: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80',
-    text: 'Novo pet cadastrado em Pinheiros, próximo a você',
+    text: 'Novo pet cadastrado em Pinheiros, proximo a voce',
+    targetId: 'post_01',
+    target_id: 'post_01',
     timestamp: 'Ontem',
+    isRead: true,
     is_read: true,
   },
 ];
@@ -397,6 +430,29 @@ function normalizeProfile(p: MockProfile): MockProfile {
   return p;
 }
 
+// Helper de normalizacao para garantir que notificacoes sempre tenham user e avatar preenchidos
+function normalizeNotification(n: any): MockNotification {
+  const user = n.user || n.sender_name || 'Usuario';
+  const userAvatar = n.userAvatar || n.sender_avatar || BASE_USER_AVATAR;
+  const isRead = Boolean(n.isRead !== undefined ? n.isRead : n.is_read);
+  const targetId = n.targetId || n.target_id || undefined;
+  return {
+    id: String(n.id),
+    user_id: n.user_id || 'usr_alice_01',
+    type: n.type || 'alert',
+    user,
+    sender_name: user,
+    userAvatar,
+    sender_avatar: userAvatar,
+    text: n.text || '',
+    targetId,
+    target_id: targetId,
+    timestamp: n.timestamp || 'Agora',
+    isRead,
+    is_read: isRead,
+  };
+}
+
 // Helpers de leitura/escrita
 async function getStorageItem<T>(key: string, defaultValue: T): Promise<T> {
   await ensureInitialized();
@@ -405,6 +461,9 @@ async function getStorageItem<T>(key: string, defaultValue: T): Promise<T> {
     const parsed = item ? JSON.parse(item) : defaultValue;
     if (key === STORAGE_KEYS.PROFILES && Array.isArray(parsed)) {
       return parsed.map(normalizeProfile) as unknown as T;
+    }
+    if (key === STORAGE_KEYS.NOTIFICATIONS && Array.isArray(parsed)) {
+      return parsed.map(normalizeNotification) as unknown as T;
     }
     return parsed;
   } catch {
@@ -868,7 +927,7 @@ export async function handleMockApiRequest<T = any>(
   if (path.match(/\/api\/notifications\/.+\/read/) && method === 'PUT') {
     const notifId = path.split('/')[3];
     const notifs = await getStorageItem<MockNotification[]>(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
-    const updated = notifs.map((n) => (n.id === notifId ? { ...n, is_read: true } : n));
+    const updated = notifs.map((n) => (n.id === notifId ? { ...n, is_read: true, isRead: true } : n));
     await setStorageItem(STORAGE_KEYS.NOTIFICATIONS, updated);
     return { success: true } as T;
   }
@@ -876,7 +935,7 @@ export async function handleMockApiRequest<T = any>(
   // 19. NOTIFICATIONS: MARK ALL READ
   if (path === '/api/notifications/read-all' && method === 'PUT') {
     const notifs = await getStorageItem<MockNotification[]>(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
-    const updated = notifs.map((n) => ({ ...n, is_read: true }));
+    const updated = notifs.map((n) => ({ ...n, is_read: true, isRead: true }));
     await setStorageItem(STORAGE_KEYS.NOTIFICATIONS, updated);
     return { success: true } as T;
   }

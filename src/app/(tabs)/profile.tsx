@@ -1,17 +1,17 @@
+import { EditPostModal } from '@/components/edit-post-modal';
 import { EditProfileModal } from '@/components/edit-profile-modal';
 import { ImageViewerModal } from '@/components/image-viewer-modal';
 import { PostActions } from '@/components/post-actions';
 import { PostOptionsMenuModal } from '@/components/post-options-modal';
-import { EditPostModal } from '@/components/edit-post-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Post, usePosts } from '@/context/PostsContext';
 import { useAuth } from '@/context/AuthContext';
+import { Post, usePosts } from '@/context/PostsContext';
 import { useAppTheme } from '@/hooks/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Switch, View, Alert, Platform } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
@@ -37,20 +37,7 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Tem certeza de que deseja sair da sua conta?')) {
-        signOut();
-      }
-    } else {
-      Alert.alert(
-        'Sair da Conta',
-        'Tem certeza de que deseja sair da sua conta?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Sair', style: 'destructive', onPress: () => signOut() },
-        ]
-      );
-    }
+    signOut();
   };
 
   const getTagColor = (type: string) => {
@@ -85,7 +72,7 @@ export default function ProfileScreen() {
             />
             <ThemedText type="title" style={{ fontSize: 24, marginTop: 16 }}>{userProfile.name}</ThemedText>
             <ThemedText style={{ color: theme.textSecondary }}>{userProfile.username}</ThemedText>
-            
+
             {Boolean(userProfile.city || userProfile.state) ? (
               <View style={styles.locationRow}>
                 <MaterialIcons name="location-on" size={15} color={theme.textSecondary} />
@@ -115,8 +102,8 @@ export default function ProfileScreen() {
             <View style={styles.actionButtonsRow}>
               <Pressable
                 style={({ pressed, hovered }: any) => [
-                  styles.editButton, 
-                  { borderColor: theme.border }, 
+                  styles.editButton,
+                  { borderColor: theme.border },
                   hovered && { backgroundColor: theme.backgroundElement },
                   pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }
                 ]}
@@ -128,8 +115,8 @@ export default function ProfileScreen() {
 
               <Pressable
                 style={({ pressed, hovered }: any) => [
-                  styles.logoutButton, 
-                  { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }, 
+                  styles.logoutButton,
+                  { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.08)' },
                   hovered && { backgroundColor: 'rgba(239, 68, 68, 0.16)' },
                   pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }
                 ]}
@@ -226,7 +213,7 @@ export default function ProfileScreen() {
                     {postImages.length > 1 && (
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.multiImageContainer}>
                         {postImages.map((imgUri, idx) => (
-                          <Pressable 
+                          <Pressable
                             key={`${imgUri}-${idx}`}
                             style={({ pressed, hovered }: any) => [
                               hovered && { opacity: 0.92, transform: [{ scale: 1.01 }] },

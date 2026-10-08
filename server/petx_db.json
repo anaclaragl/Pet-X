@@ -22,5 +22,50 @@
       "created_at": "2026-09-29T20:36:55.090Z"
     }
   ],
-  "notifications": []
+  "notifications": [
+    {
+      "id": "notif_01",
+      "user_id": "usr_alice_01",
+      "type": "message",
+      "sender_name": "ONG Patas Amigas",
+      "sender_avatar": "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80",
+      "text": "respondeu a sua mensagem sobre o Thor",
+      "target_id": "conv_01",
+      "is_read": false,
+      "created_at": "2026-10-07T21:00:00.000Z"
+    },
+    {
+      "id": "notif_02",
+      "user_id": "usr_alice_01",
+      "type": "like",
+      "sender_name": "Carlos Eduardo",
+      "sender_avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80",
+      "text": "curtiu seu resgate na Marginal Pinheiros",
+      "target_id": "post_03",
+      "is_read": false,
+      "created_at": "2026-10-07T19:30:00.000Z"
+    },
+    {
+      "id": "notif_03",
+      "user_id": "usr_alice_01",
+      "type": "comment",
+      "sender_name": "ONG Patas Amigas",
+      "sender_avatar": "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80",
+      "text": "comentou: \"Ele e lindo demais! Ja compartilhamos no grupo da clinica.\"",
+      "target_id": "post_03",
+      "is_read": false,
+      "created_at": "2026-10-07T18:00:00.000Z"
+    },
+    {
+      "id": "notif_04",
+      "user_id": "usr_alice_01",
+      "type": "alert",
+      "sender_name": "Pet-X Alerta",
+      "sender_avatar": "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=400&q=80",
+      "text": "Novo pet cadastrado em Pinheiros, proximo a voce",
+      "target_id": "post_01",
+      "is_read": true,
+      "created_at": "2026-10-06T12:00:00.000Z"
+    }
+  ]
 }

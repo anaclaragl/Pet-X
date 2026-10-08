@@ -454,12 +454,16 @@ function formatRelativeTime(createdAt) {
     const rows = dbData.notifications.filter(n => n.user_id === params[0]).map(n => ({
       id: n.id,
       type: n.type,
-      sender_name: n.sender_name,
-      sender_avatar: n.sender_avatar,
+      user: n.sender_name || n.user || 'Usuario',
+      sender_name: n.sender_name || n.user || 'Usuario',
+      userAvatar: n.sender_avatar || n.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+      sender_avatar: n.sender_avatar || n.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
       text: n.text,
-      target_id: n.target_id,
+      targetId: n.target_id || n.targetId,
+      target_id: n.target_id || n.targetId,
       created_at: n.created_at,
-      is_read: n.is_read
+      isRead: Boolean(n.is_read !== undefined ? n.is_read : n.isRead),
+      is_read: Boolean(n.is_read !== undefined ? n.is_read : n.isRead)
     }));
     rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return { rows };

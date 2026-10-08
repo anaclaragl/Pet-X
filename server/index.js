@@ -844,12 +844,12 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
       return {
         id: row.id,
         type: row.type,
-        user: row.user,
-        userAvatar: row.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+        user: row.user || row.sender_name || 'Usuario',
+        userAvatar: row.userAvatar || row.sender_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
         text: row.text,
-        targetId: row.targetId,
+        targetId: row.targetId || row.target_id,
         timestamp: timeStr,
-        isRead: row.isRead
+        isRead: Boolean(row.isRead !== undefined ? row.isRead : row.is_read)
       };
     });
 
