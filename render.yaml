@@ -1,0 +1,18 @@
+services:
+  # Pet-X Frontend Demo (Expo Static Web Export)
+  - type: web
+    name: pet-x-web-demo
+    runtime: static
+    buildCommand: npm install && npm run build:web
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

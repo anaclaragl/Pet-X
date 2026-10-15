@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, FlatList, View, Image, Pressable, ScrollView, Share, Platform } from 'react-native';
+import { StyleSheet, FlatList, View, Image, Pressable, ScrollView, Share, Platform, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,6 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function FeedScreen() {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const { user: currentUser } = useAuth();
   const { unreadCount } = useNotifications();
   const { 
@@ -115,30 +117,32 @@ export default function FeedScreen() {
               <MaterialIcons name="keyboard-arrow-down" size={18} color={theme.textSecondary} />
             </Pressable>
 
-            {/* Notification Bell Button */}
-            <Pressable
-              style={({ pressed, hovered }: any) => [
-                styles.notificationBtn,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-                hovered && { borderColor: theme.brand },
-                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
-              ]}
-              onPress={() => router.push('/(tabs)/notifications')}
-              accessibilityLabel="Notificações"
-            >
-              <MaterialIcons
-                name={unreadCount > 0 ? "notifications" : "notifications-none"}
-                size={21}
-                color={unreadCount > 0 ? theme.brand : theme.text}
-              />
-              {unreadCount > 0 && (
-                <View style={[styles.headerBadge, { backgroundColor: theme.brand }]}>
-                  <ThemedText style={styles.headerBadgeText}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </ThemedText>
-                </View>
-              )}
-            </Pressable>
+            {/* Notification Bell Button (Mobile only) */}
+            {isMobile && (
+              <Pressable
+                style={({ pressed, hovered }: any) => [
+                  styles.notificationBtn,
+                  { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+                  hovered && { borderColor: theme.brand },
+                  pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
+                ]}
+                onPress={() => router.push('/(tabs)/notifications')}
+                accessibilityLabel="Notificações"
+              >
+                <MaterialIcons
+                  name={unreadCount > 0 ? "notifications" : "notifications-none"}
+                  size={21}
+                  color={unreadCount > 0 ? theme.brand : theme.text}
+                />
+                {unreadCount > 0 && (
+                  <View style={[styles.headerBadge, { backgroundColor: theme.brand }]}>
+                    <ThemedText style={styles.headerBadgeText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </ThemedText>
+                  </View>
+                )}
+              </Pressable>
+            )}
           </View>
         </ThemedView>
 
