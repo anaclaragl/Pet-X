@@ -151,7 +151,7 @@ async function seed() {
         id: 'post_pet_04',
         user_id: 'usr_ong_patas',
         type: 'adocao',
-        content: 'Duplinha inseparável! Fred & Mel têm 3 meses, vermifugados e muito brincalhões. Adoção conjunta preferencial para apartamentos telados.',
+        content: 'Fred tem 3 meses, vermifugado e muito brincalhão. Adotação preferencial para apartamentos telados.',
         city: 'São Paulo',
         state: 'SP',
         neighborhood: 'Moema',

@@ -1,6 +1,6 @@
+import { ALICE_AVATAR, BASE_USER_AVATAR } from '@/constants/avatars';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculateDistanceKm } from './location';
-import { ALICE_AVATAR, BASE_USER_AVATAR } from '@/constants/avatars';
 
 // Tipos internos do Mock Service
 export interface MockUser {
@@ -270,7 +270,7 @@ const INITIAL_POSTS: MockPost[] = [
     user: 'ONG Patas Amigas',
     avatar: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=400&q=80',
     type: 'ong',
-    content: 'Duplinha inseparável! Fred & Mel têm 3 meses, vermifugados e cheios de energia. Adoção conjunta prioritária para lares telados e seguros.',
+    content: 'Fred tem 3 meses, vermifugado e cheio de energia. Adoção prioritária para lares telados e seguros.',
     images: [
       'https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=800&q=80',
     ],
@@ -677,19 +677,19 @@ export async function handleMockApiRequest<T = any>(
     } as T;
   }
 
-function matchesState(postState?: string, filterState?: string): boolean {
-  if (!postState || !filterState) return false;
-  const ps = postState.trim().toLowerCase();
-  const fs = filterState.trim().toLowerCase();
-  if (ps === fs) return true;
-  if ((fs === 'rj' && ps === 'rio de janeiro') || (fs === 'rio de janeiro' && ps === 'rj')) return true;
-  if ((fs === 'sp' && (ps === 'são paulo' || ps === 'sao paulo')) || ((fs === 'são paulo' || fs === 'sao paulo') && ps === 'sp')) return true;
-  if ((fs === 'mg' && ps === 'minas gerais') || (fs === 'minas gerais' && ps === 'mg')) return true;
-  if ((fs === 'pr' && (ps === 'paraná' || ps === 'parana')) || ((fs === 'paraná' || fs === 'parana') && ps === 'pr')) return true;
-  if ((fs === 'rs' && (ps === 'rio grande do sul' || ps === 'rs')) || (fs === 'rio grande do sul' && ps === 'rs')) return true;
-  if ((fs === 'df' && ps === 'distrito federal') || (fs === 'distrito federal' && ps === 'df')) return true;
-  return false;
-}
+  function matchesState(postState?: string, filterState?: string): boolean {
+    if (!postState || !filterState) return false;
+    const ps = postState.trim().toLowerCase();
+    const fs = filterState.trim().toLowerCase();
+    if (ps === fs) return true;
+    if ((fs === 'rj' && ps === 'rio de janeiro') || (fs === 'rio de janeiro' && ps === 'rj')) return true;
+    if ((fs === 'sp' && (ps === 'são paulo' || ps === 'sao paulo')) || ((fs === 'são paulo' || fs === 'sao paulo') && ps === 'sp')) return true;
+    if ((fs === 'mg' && ps === 'minas gerais') || (fs === 'minas gerais' && ps === 'mg')) return true;
+    if ((fs === 'pr' && (ps === 'paraná' || ps === 'parana')) || ((fs === 'paraná' || fs === 'parana') && ps === 'pr')) return true;
+    if ((fs === 'rs' && (ps === 'rio grande do sul' || ps === 'rs')) || (fs === 'rio grande do sul' && ps === 'rs')) return true;
+    if ((fs === 'df' && ps === 'distrito federal') || (fs === 'distrito federal' && ps === 'df')) return true;
+    return false;
+  }
 
   // 6. POSTS: LIST POSTS (com suporte a filtros de localização e raio)
   if (path === '/api/posts' && method === 'GET') {
