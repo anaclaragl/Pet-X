@@ -29,7 +29,7 @@ const RADIUS_OPTIONS = [
 
 const PRESET_CITIES: Array<{ city: string; state: string; lat: number; lng: number }> = [
   { city: 'São Paulo', state: 'SP', lat: -23.5505, lng: -46.6333 },
-  { city: 'Rio de Janeiro', state: 'RJ', lat: -22.9068, lng: -43.1729 },
+  { city: 'Rio de Janeiro', state: 'RJ', lat: -22.9711, lng: -43.1825 },
   { city: 'Belo Horizonte', state: 'MG', lat: -19.9167, lng: -43.9345 },
   { city: 'Curitiba', state: 'PR', lat: -25.4284, lng: -49.2733 },
   { city: 'Porto Alegre', state: 'RS', lat: -30.0346, lng: -51.2177 },

@@ -177,16 +177,15 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       if (loc?.latitude && loc?.longitude) {
         params.append('lat', loc.latitude.toString());
         params.append('lng', loc.longitude.toString());
-        if (radius) {
-          params.append('radius_km', radius.toString());
-        }
-      } else {
-        if (loc?.city) {
-          params.append('city', loc.city);
-        }
-        if (loc?.state) {
-          params.append('state', loc.state);
-        }
+      }
+      if (radius) {
+        params.append('radius_km', radius.toString());
+      }
+      if (loc?.city) {
+        params.append('city', loc.city);
+      }
+      if (loc?.state) {
+        params.append('state', loc.state);
       }
 
 
@@ -236,7 +235,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     fetchAllPosts();
-  }, [user?.id, activeLocation?.latitude, activeLocation?.longitude, activeLocation?.city, searchRadius]);
+  }, [user?.id, activeLocation?.latitude, activeLocation?.longitude, activeLocation?.city, activeLocation?.state, searchRadius]);
 
   const requestCurrentLocation = async (): Promise<boolean> => {
     try {

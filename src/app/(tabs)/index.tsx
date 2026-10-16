@@ -309,6 +309,17 @@ export default function FeedScreen() {
               </View>
             );
           }}
+          ListEmptyComponent={
+            <View style={{ padding: 40, alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialIcons name="location-off" size={44} color={theme.textSecondary} style={{ marginBottom: 12, opacity: 0.6 }} />
+              <ThemedText style={{ fontSize: 16, fontWeight: '700', color: theme.text, textAlign: 'center', marginBottom: 6 }}>
+                Nenhum pet encontrado nesta regiao
+              </ThemedText>
+              <ThemedText style={{ fontSize: 13, color: theme.textSecondary, textAlign: 'center', maxWidth: 300 }}>
+                Tente aumentar o raio de busca ou selecionar outra cidade no filtro de localizacao.
+              </ThemedText>
+            </View>
+          }
         />
 
         <LocationModal

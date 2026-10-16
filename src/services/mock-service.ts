@@ -96,7 +96,7 @@ export interface MockNotification {
 
 // Chaves de Armazenamento
 const STORAGE_KEYS = {
-  INITIALIZED: '@petx_demo:initialized_v9',
+  INITIALIZED: '@petx_demo:initialized_v10',
   CURRENT_USER_ID: '@petx_demo:current_user_id',
   USERS: '@petx_demo:users',
   PROFILES: '@petx_demo:profiles',
@@ -289,6 +289,32 @@ const INITIAL_POSTS: MockPost[] = [
     isVerified: true,
     createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
     time: 'Ontem',
+  },
+  {
+    id: 'post_05',
+    userId: 'usr_carlos_02',
+    user: 'Carlos Eduardo',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+    type: 'encontrado',
+    content: 'Cachorrinho filhote resgatado proximo a praia de Ipanema. Sem coleira, muito carinhoso e docil. Procuramos tutor ou interessados em adocao responsavel.',
+    images: [
+      'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800&q=80',
+    ],
+    image: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800&q=80',
+    city: 'Rio de Janeiro',
+    state: 'RJ',
+    neighborhood: 'Ipanema',
+    latitude: -22.9868,
+    longitude: -43.2045,
+    isApproximate: false,
+    likesCount: 19,
+    isLiked: false,
+    commentsCount: 0,
+    comments: [],
+    isResolved: false,
+    isVerified: false,
+    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+    time: 'Ha 2h',
   },
 ];
 
@@ -651,6 +677,20 @@ export async function handleMockApiRequest<T = any>(
     } as T;
   }
 
+function matchesState(postState?: string, filterState?: string): boolean {
+  if (!postState || !filterState) return false;
+  const ps = postState.trim().toLowerCase();
+  const fs = filterState.trim().toLowerCase();
+  if (ps === fs) return true;
+  if ((fs === 'rj' && ps === 'rio de janeiro') || (fs === 'rio de janeiro' && ps === 'rj')) return true;
+  if ((fs === 'sp' && (ps === 'são paulo' || ps === 'sao paulo')) || ((fs === 'são paulo' || fs === 'sao paulo') && ps === 'sp')) return true;
+  if ((fs === 'mg' && ps === 'minas gerais') || (fs === 'minas gerais' && ps === 'mg')) return true;
+  if ((fs === 'pr' && (ps === 'paraná' || ps === 'parana')) || ((fs === 'paraná' || fs === 'parana') && ps === 'pr')) return true;
+  if ((fs === 'rs' && (ps === 'rio grande do sul' || ps === 'rs')) || (fs === 'rio grande do sul' && ps === 'rs')) return true;
+  if ((fs === 'df' && ps === 'distrito federal') || (fs === 'distrito federal' && ps === 'df')) return true;
+  return false;
+}
+
   // 6. POSTS: LIST POSTS (com suporte a filtros de localização e raio)
   if (path === '/api/posts' && method === 'GET') {
     const posts = await getStorageItem<MockPost[]>(STORAGE_KEYS.POSTS, INITIAL_POSTS);
@@ -664,12 +704,12 @@ export async function handleMockApiRequest<T = any>(
 
     let filtered = [...posts];
 
-    // Se temos coordenadas (GPS ou cidade pré-definida com lat/lng):
+    // Se temos coordenadas (GPS ou cidade pre-definida com lat/lng):
     if (latParam && lngParam) {
       const uLat = parseFloat(latParam);
       const uLng = parseFloat(lngParam);
 
-      // 1. Calcula a distância real para cada post que possui coordenadas
+      // 1. Calcula a distancia real para cada post que possui coordenadas
       filtered = filtered.map((p) => {
         if (p.latitude !== null && p.latitude !== undefined && p.longitude !== null && p.longitude !== undefined) {
           const distance = calculateDistanceKm(uLat, uLng, Number(p.latitude), Number(p.longitude));
@@ -681,18 +721,26 @@ export async function handleMockApiRequest<T = any>(
       // 2. Se houver raio de proximidade selecionado (ex: 5km, 15km, 30km, 50km)
       if (radiusParam) {
         const maxRadius = parseFloat(radiusParam);
-        const withinRadius = filtered.filter(
-          (p) => (p as any).distanceKm !== undefined && (p as any).distanceKm <= maxRadius
-        );
-
-        if (withinRadius.length > 0) {
-          filtered = withinRadius;
-        }
-        // Se nenhum post de exemplo estiver dentro do raio (ex: usuário testando de uma cidade distante),
-        // mantemos os posts ordenados por proximidade com as tags de distância para não quebrar a demonstração.
+        filtered = filtered.filter((p) => {
+          if ((p as any).distanceKm !== undefined && (p as any).distanceKm !== null) {
+            return (p as any).distanceKm <= maxRadius;
+          }
+          if (cityParam && p.city?.toLowerCase() === cityParam.toLowerCase()) {
+            return true;
+          }
+          if (stateParam && matchesState(p.state, stateParam)) {
+            return true;
+          }
+          return false;
+        });
+      } else if (stateParam) {
+        // "Todo o estado"
+        filtered = filtered.filter((p) => matchesState(p.state, stateParam));
+      } else if (cityParam) {
+        filtered = filtered.filter((p) => p.city?.toLowerCase() === cityParam.toLowerCase());
       }
 
-      // 3. Ordena os posts pelo mais próximo de onde o usuário está!
+      // 3. Ordena os posts pelo mais proximo de onde o usuario esta
       filtered.sort((a, b) => {
         const distA = (a as any).distanceKm ?? 99999;
         const distB = (b as any).distanceKm ?? 99999;
@@ -700,11 +748,11 @@ export async function handleMockApiRequest<T = any>(
       });
     } else {
       // Sem coordenadas GPS: filtro textual por cidade/estado
+      if (stateParam) {
+        filtered = filtered.filter((p) => matchesState(p.state, stateParam));
+      }
       if (cityParam) {
         filtered = filtered.filter((p) => p.city?.toLowerCase() === cityParam.toLowerCase());
-      }
-      if (stateParam) {
-        filtered = filtered.filter((p) => p.state?.toLowerCase() === stateParam.toLowerCase());
       }
       // Ordena pelos mais recentes
       filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
